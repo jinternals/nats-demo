@@ -2,9 +2,6 @@ module harness
 
 go 1.24.7
 
-
-
-
 require github.com/nats-io/nats.go v1.46.1
 
 require (

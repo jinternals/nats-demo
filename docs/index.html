@@ -89,6 +89,11 @@ td code{word-break:break-word}
 # Sites dial in on 7422. The hub never connects to a site.
 # =============================================================================
 server_name: cloud-hub-1
+
+# Same black-hole detection on the hub side, so the leaf DISCONNECT event in
+# $SYS.ACCOUNT.FLEET.DISCONNECT (your site-offline signal) fires in ~1 min.
+ping_interval: &quot;20s&quot;
+ping_max: 2
 listen: 0.0.0.0:4222            # cloud apps
 
 jetstream {
@@ -202,6 +207,12 @@ system_account: SYS
 #    commands wait in the cloud. Nats-TTL removes them once they are stale.
 # =============================================================================
 server_name: site1-leaf
+
+# Detect a black-holed WAN (socket open, nothing flowing) in about a minute.
+# Defaults are 2m x 2 outstanding (server/const.go), i.e. minutes of a dead
+# link that still looks up. Measured with 20s/2: link dropped after 61s.
+ping_interval: &quot;20s&quot;
+ping_max: 2
 listen: 0.0.0.0:4222             # site LAN only
 
 jetstream {
@@ -209,6 +220,12 @@ jetstream {
   store_dir: &quot;./data/site1&quot;
   # Size = uplink rate x worst outage you must survive, plus headroom.
   max_file_store: 20GB
+  # Every write reaches the OS immediately, so a nats-server crash loses
+  # nothing (measured: kill -9 mid-outage, 0 lost). fsync, though, runs only
+  # every 2m by default (server/filestore.go defaultSyncInterval), so a POWER
+  # cut can lose up to 2m of already-acked uplink. Sites lose power; this
+  # closes that window. Measure the cost on the real site disk.
+  sync_interval: always
 }
 
 accounts {
@@ -245,7 +262,9 @@ leafnodes {
       }
     }
   ]
-  reconnect: &quot;2s&quot;
+  # Actual delay is reconnect + random jitter up to reconnect
+  # (server/leafnode.go), so 5s spreads a regional reconnect over 5-10s.
+  reconnect: &quot;5s&quot;
 }
 </code></pre></details>
 <details><summary>streams/SITE1_UPLINK.json (site domain)</summary><pre><code>{

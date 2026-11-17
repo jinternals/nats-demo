@@ -1,6 +1,6 @@
 # Cloud hub + site leaf nodes: reliable, per-site-secured NATS
 
-Full write-up with diagram: [`docs/index.html`](docs/index.html).
+Full write-up with diagram: [`docs/index.html`](docs/index.html). The MQTT failure modes checked against this design, and what production still needs: [`docs/production-readiness.md`](docs/production-readiness.md).
 
 Sites dial out to the cloud over one TLS connection, so they work behind NAT.
 Edge apps only ever talk to the NATS server on their own site LAN.
@@ -43,7 +43,7 @@ flowchart LR
 | `config/siteN-leaf.conf` | leaf per site |
 | `streams/*.json` | stream/consumer definitions (`nats stream add --config …`). Copy `SITE1_UPLINK` / `site1-commands` per site and add a `sources` entry per site to `FLEET_UPLINK` |
 | `gen-certs.sh` | fleet CA, hub cert, one client cert per site |
-| `test/` | harness + `scenario.sh` used to verify all of the below |
+| `test/` | harness; `scenario.sh` (outage, TTL, isolation), `scenario-crash.sh` (site/hub `kill -9` mid-outage, leaf events) |
 
 ## Verified (nats-server v2.12.1, nats.go v1.46.1, 1 hub + 2 leaves, site1's WAN through a killable TCP proxy)
 

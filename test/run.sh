@@ -6,6 +6,6 @@ export CLOUD_APP_PASS=cloudpw LEAF_SITE1_PASS=leaf1pw LEAF_SITE2_PASS=leaf2pw SY
 sed "s#\./data#$T/data#; s#\./certs#$R/certs#g; s#advertise: "cloud-hub:7422"#advertise: "localhost:17422"#" $R/config/cloud-hub.conf > $T/cloud.conf
 sed "s#\./data#$T/data#; s#\./certs#$R/certs#g; s#0.0.0.0:4222#127.0.0.1:4223#; s#cloud-hub:7422#localhost:17422#" $R/config/site1-leaf.conf > $T/site1.conf
 sed "s#\./data#$T/data#; s#\./certs#$R/certs#g; s#0.0.0.0:4222#127.0.0.1:4224#; s#cloud-hub:7422#localhost:7422#" $R/config/site2-leaf.conf > $T/site2.conf
-for c in cloud site1 site2; do nats-server -c $T/$c.conf -l $T/$c.log & echo $! > $T/$c.pid; done
-python3 $R/test/wanproxy.py 17422 7422 & echo $! > $T/wan.pid
+for c in cloud site1 site2; do nats-server -c $T/$c.conf -l $T/$c.log >/dev/null 2>&1 & echo $! > $T/$c.pid; done
+python3 $R/test/wanproxy.py 17422 7422 >/dev/null 2>&1 & echo $! > $T/wan.pid
 sleep 4; grep -h -iE "error|leafnode connection created" $T/*.log | head

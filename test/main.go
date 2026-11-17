@@ -120,6 +120,32 @@ func main() {
 		_, err := js.Consumer(ctx(), "FLEET_COMMANDS", os.Args[3]+"-commands")
 		fmt.Println("ops-steal result:", err)
 
+	case "source-info":
+		js, _ := jetstream.New(cloud())
+		st, err := js.Stream(ctx(), "FLEET_UPLINK")
+		must(err)
+		info, err := st.Info(ctx())
+		must(err)
+		for _, si := range info.Sources {
+			fmt.Printf("source %s lag=%d last_seen=%s\n", si.Name, si.Lag, si.Active.Round(time.Millisecond))
+		}
+
+	case "sys-watch": // sys-watch seconds
+		nc := conn("tls://localhost:4222", "sys", "syspw", true)
+		sec, _ := strconv.Atoi(os.Args[2])
+		nc.Subscribe("$SYS.ACCOUNT.FLEET.>", func(m *nats.Msg) {
+			var ev struct {
+				Type   string `json:"type"`
+				Client struct{ Kind, User, Name string } `json:"client"`
+				Reason string `json:"reason"`
+			}
+			json.Unmarshal(m.Data, &ev)
+			if strings.Contains(m.Subject, "CONNECT") || strings.Contains(m.Subject, "DISCONNECT") {
+				fmt.Printf("%s SYS %s kind=%s user=%s reason=%s\n", time.Now().Format("15:04:05"), m.Subject, ev.Client.Kind, ev.Client.User, ev.Reason)
+			}
+		})
+		time.Sleep(time.Duration(sec) * time.Second)
+
 	case "edge-inject": // site tries to forge a command
 		nc := edge(os.Args[2])
 		errs := make(chan error, 1)
