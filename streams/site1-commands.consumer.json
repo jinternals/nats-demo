@@ -1,0 +1,9 @@
+{
+  "durable_name": "site1-commands",
+  "filter_subject": "sites.site1.command.*.req",
+  "deliver_policy": "all",
+  "ack_policy": "explicit",
+  "ack_wait": 30000000000,
+  "max_deliver": -1,
+  "max_ack_pending": 100
+}

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NATS edge: cloud hub + site leaf nodes</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1f1e1b;--mut:#5f5e5a;--line:#d3d1c7;--card:#fff;--acc:#534ab7;--acc-bg:#eeedfe;--st:#e1f5ee;--st-b:#0f6e56;--site:#f1efe8;--code:#f4f3ee;--ok:#3b6d11;--bad:#a32d2d}
+@media (prefers-color-scheme:dark){:root{--bg:#1a1a18;--fg:#ecebe6;--mut:#b4b2a9;--line:#444441;--card:#232321;--acc:#afa9ec;--acc-bg:#26215c;--st:#04342c;--st-b:#5dcaa5;--site:#2c2c2a;--code:#262624;--ok:#97c459;--bad:#f09595}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
+main{max-width:960px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:30px;margin:0 0 6px;font-weight:600;letter-spacing:-.01em}h2{font-size:21px;margin:44px 0 10px;padding-top:12px;border-top:1px solid var(--line);font-weight:600}h3{font-size:17px;margin:24px 0 6px}
+.lede{color:var(--mut);font-size:18px;margin:0 0 22px}
+.tags span{display:inline-block;font-size:12px;padding:3px 10px;border-radius:99px;background:var(--acc-bg);color:var(--acc);margin:0 6px 6px 0}
+code,.m{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em}
+pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto;font-size:13px;line-height:1.5}
+pre code{font-size:inherit}
+table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:14.5px}th,td{text-align:left;vertical-align:top;padding:9px 10px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:600;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.diagram{width:100%;height:auto;display:block}
+.diagram .cloud{fill:var(--acc-bg);stroke:var(--acc);stroke-width:1}.diagram .site{fill:var(--site);stroke:var(--line);stroke-width:1}
+.diagram .store{fill:var(--st);stroke:var(--st-b);stroke-width:1}.diagram .app{fill:var(--card);stroke:var(--line);stroke-width:1}
+.diagram text{text-anchor:middle;fill:var(--fg);font-size:14px}.diagram .h{font-weight:600;font-size:15px}.diagram .b{font-weight:600}.diagram .s{fill:var(--mut);font-size:12.5px}
+.diagram .l{text-anchor:start;fill:var(--mut);font-size:12.5px}.diagram .ln{stroke:var(--mut);stroke-width:1.4}.diagram .wan{stroke:var(--acc);stroke-width:2.6}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+details{margin:10px 0;border:1px solid var(--line);border-radius:10px;background:var(--card)}summary{cursor:pointer;padding:10px 14px;font-weight:600}details pre{margin:0 12px 12px}
+.note{border-left:3px solid var(--acc);padding:4px 14px;margin:14px 0;color:var(--mut)}
+nav{display:flex;flex-wrap:wrap;gap:4px 14px}nav a{color:var(--acc);font-size:14px;text-decoration:none}
+.dwrap{overflow-x:auto}@media (max-width:640px){.diagram{min-width:620px}table{display:block;overflow-x:auto}h1{font-size:25px}}
+td code{word-break:break-word}
+</style></head><body><main>
+<h1>NATS edge: cloud hub + site leaf nodes</h1>
+<p class="lede">Sites subscribe to the cloud over one outbound TLS connection. Reliable delivery in both directions, and a separate certificate and permissions for every leaf.</p>
+<div class="tags"><span>nats-server 2.12.1</span><span>JetStream domains</span><span>leaf nodes</span><span>mTLS verify_and_map</span><span>Nats-TTL</span><span>verified locally</span></div>
+<nav><a href="#arch">Architecture</a><a href="#flows">Delivery</a><a href="#sec">Security</a><a href="#config">Config</a><a href="#verify">Verification</a><a href="#gaps">Open items</a></nav>
+
+<h2 id="arch">Architecture</h2>
+<div class="card dwrap"><svg viewBox="0 0 760 520" role="img" aria-labelledby="dt dd" class="diagram">
+<title id="dt">Cloud hub with site leaf nodes</title>
+<desc id="dd">Each site runs a leaf node with a local uplink stream; the leaf dials out to the cloud hub over mutual TLS using a per-site certificate. Commands wait in the cloud; uplink data waits on the site disk.</desc>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6"/></marker></defs>
+<rect x="20" y="16" width="720" height="176" rx="18" class="cloud"/>
+<text x="380" y="44" class="h">Cloud hub · JetStream domain <tspan class="m">cloud</tspan></text>
+<rect x="50" y="64" width="300" height="70" rx="10" class="store"/>
+<text x="200" y="92" class="b m">FLEET_UPLINK</text><text x="200" y="114" class="s">sources every site stream · R3</text>
+<rect x="410" y="64" width="300" height="70" rx="10" class="store"/>
+<text x="560" y="92" class="b m">FLEET_COMMANDS</text><text x="560" y="114" class="s">work queue · Nats-TTL per command · R3</text>
+<text x="380" y="168" class="s">cloud-app: reads FLEET_UPLINK · publishes commands with Nats-Msg-Id + Nats-TTL</text>
+<rect x="20" y="300" width="340" height="204" rx="18" class="site"/>
+<text x="44" y="326" class="h" style="text-anchor:start">Site 1 LAN</text>
+<rect x="45" y="342" width="290" height="66" rx="10" class="store"/>
+<text x="190" y="368" class="b m">site1-leaf</text><text x="190" y="390" class="s">domain site1 · SITE1_UPLINK on disk</text>
+<rect x="45" y="440" width="290" height="44" rx="10" class="app"/><text x="190" y="467" class="b">edge-app</text>
+<rect x="400" y="300" width="340" height="204" rx="18" class="site"/>
+<text x="424" y="326" class="h" style="text-anchor:start">Site 2 LAN</text>
+<rect x="425" y="342" width="290" height="66" rx="10" class="store"/>
+<text x="570" y="368" class="b m">site2-leaf</text><text x="570" y="390" class="s">domain site2 · SITE2_UPLINK on disk</text>
+<rect x="425" y="440" width="290" height="44" rx="10" class="app"/><text x="570" y="467" class="b">edge-app</text>
+<line x1="190" y1="438" x2="190" y2="412" class="ln" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<line x1="570" y1="438" x2="570" y2="412" class="ln" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<line x1="190" y1="340" x2="190" y2="196" class="wan" marker-end="url(#ah)"/>
+<line x1="570" y1="340" x2="570" y2="196" class="wan" marker-end="url(#ah)"/>
+<text x="204" y="250" class="l">leaf · mTLS · dials out</text><text x="204" y="270" class="l m">CN=leaf-site1,O=fleet</text>
+<text x="584" y="250" class="l">leaf · mTLS · dials out</text><text x="584" y="270" class="l m">CN=leaf-site2,O=fleet</text>
+</svg></div>
+<p>Edge apps talk only to the NATS server on their own site LAN. The leaf node at each site <b>dials out</b> to the hub, so the site needs no inbound port and works behind NAT. Each side runs its own JetStream domain (<code>cloud</code>, <code>site1</code>, …), so the cloud can reach a site's streams as <code>$JS.site1.API</code> and a site can reach the cloud's as <code>$JS.cloud.API</code>, both over the same leaf connection.</p>
+
+<h2 id="flows">Where each message waits during an outage</h2>
+<table><tr><th>Traffic</th><th>Waits on</th><th>Mechanism</th></tr>
+<tr><td>Telemetry, health, command results (site → cloud)</td><td><b>Site disk</b>: <code>SITE1_UPLINK</code></td><td>The edge app's JetStream publish is acked by the <i>local</i> server, so it succeeds with the WAN down. <code>FLEET_UPLINK</code> <i>sources</i> each site stream and resumes from its last sequence when the link returns. Order is kept, and <code>Nats-Msg-Id</code> deduplicates.</td></tr>
+<tr><td>Commands (cloud → site)</td><td><b>Cloud disk</b>: <code>FLEET_COMMANDS</code></td><td>The site pulls its own durable consumer <code>siteN-commands</code> through the leaf. Explicit ack; a work-queue stream deletes on ack.</td></tr>
+<tr><td>Stale commands</td><td>Deleted in the cloud</td><td>Per-message <code>Nats-TTL</code> (stream has <code>allow_msg_ttl</code>), so a stale command is never shipped. Keep the <code>expiresAt</code> check at the edge as well.</td></tr>
+<tr><td>Latest health per robot</td><td><code>FLEET_UPLINK</code></td><td>A consumer with <code>deliver_policy: last_per_subject</code> on <code>sites.*.health.&gt;</code></td></tr></table>
+<p class="note">Sizing: <code>SITE1_UPLINK</code> uses <code>discard: new</code>. When the site disk fills during a very long outage, publishes are <i>refused</i> (the app sees an error) rather than old unsent data being silently dropped. Size <code>max_bytes</code> from uplink rate × the longest outage you must survive.</p>
+
+<h2 id="sec">Per-leaf security</h2>
+<h3>Identity: one client certificate per site</h3>
+<p>The hub's leaf listener uses <code>verify_and_map: true</code>. Each site presents its own certificate signed by the fleet CA, and the certificate subject <code>CN=leaf-siteN,O=fleet</code> <i>is</i> the hub user. There is no shared secret and no password in a URL. Revoking one site touches no other site. A valid CA-signed certificate with an unknown subject is rejected.</p>
+<h3>Authorization: enforced on the hub, per leaf</h3>
+<table><tr><th>Direction (hub's view)</th><th>site1 may</th></tr>
+<tr><td>publish (site → cloud)</td><td>pull, read info on and ack <b>only</b> <code>FLEET_COMMANDS.site1-commands</code>; deliver uplink only on <code>fleet.deliver.site1.&gt;</code>; <code>$JSC.R.&gt;</code> for sourcing replies</td></tr>
+<tr><td>deny</td><td><code>sites.*.command.*.req</code>: a site can never inject commands, even for its own robots</td></tr>
+<tr><td>subscribe (cloud → site)</td><td><code>$JS.site1.API.&gt;</code> (the hub sourcing its stream), <code>$JS.FC.&gt;</code>, <code>_INBOX.&gt;</code></td></tr></table>
+<p>The site LAN has its own limits: <code>edge-app</code> may publish only <code>sites.site1.&gt;</code> (except command requests) and use its own consumer. <code>site-ops</code> exists for provisioning only. Even <code>site-ops</code>, with full rights on its own leaf, is refused by the hub when it asks for another site's consumer.</p>
+
+<h2 id="config">Configuration</h2>
+<details open><summary>config/cloud-hub.conf</summary><pre><code># =============================================================================
+# CLOUD HUB
+#
+# Owns the durable command queue (FLEET_COMMANDS) and the fleet-wide uplink
+# (FLEET_UPLINK, sourced from every site&#x27;s local stream).
+# Sites dial in on 7422. The hub never connects to a site.
+# =============================================================================
+server_name: cloud-hub-1
+listen: 0.0.0.0:4222            # cloud apps
+
+jetstream {
+  domain: cloud                 # sites reach this JetStream as $JS.cloud.API
+  store_dir: &quot;./data/cloud&quot;
+  max_file_store: 50GB
+}
+
+# --- client TLS (cloud apps) -------------------------------------------------
+tls {
+  cert_file: &quot;./certs/cloud.crt&quot;
+  key_file:  &quot;./certs/cloud.key&quot;
+  ca_file:   &quot;./certs/ca.crt&quot;
+}
+
+# --- leaf node listener: every site dials OUT to here ------------------------
+leafnodes {
+  listen: 0.0.0.0:7422
+  # The hub ALWAYS tells connecting leaves its own leaf URL, and leaves add it
+  # to their reconnect list. Left unset, that is the pod/VM&#x27;s private IP, and
+  # leaves will reconnect around your load balancer. Set it to the public name.
+  # (no_advertise does NOT cover this: in v2.12.1 it only affects gossip to
+  # cluster routes -- server/route.go, server/leafnode.go.)
+  advertise: &quot;cloud-hub:7422&quot;
+  tls {
+    cert_file: &quot;./certs/cloud.crt&quot;
+    key_file:  &quot;./certs/cloud.key&quot;
+    ca_file:   &quot;./certs/ca.crt&quot;
+    # Per-leaf identity: each site presents its OWN client cert, signed by
+    # the fleet CA. The cert subject IS the username. No shared secret, no
+    # password in a URL, and revoking one site never touches another.
+    verify_and_map: true
+    timeout: 5
+  }
+}
+
+accounts {
+  FLEET {
+    jetstream: enabled
+    users: [
+      # cloud-app: issues commands, reads the whole fleet uplink.
+      { user: cloud-app, password: $CLOUD_APP_PASS }
+
+      # One identity per site = the subject of that site&#x27;s client cert.
+      # Permissions are from the HUB&#x27;s point of view:
+      #   publish   = what the site may send up into the cloud
+      #   subscribe = what the cloud may send down to the site
+      { user: &quot;CN=leaf-site1,O=fleet&quot;, permissions: {
+          publish: {
+            allow: [
+              # downlink: pull + ack its OWN durable command consumer only
+              &quot;$JS.cloud.API.CONSUMER.MSG.NEXT.FLEET_COMMANDS.site1-commands&quot;
+              &quot;$JS.cloud.API.CONSUMER.INFO.FLEET_COMMANDS.site1-commands&quot;
+              &quot;$JS.ACK.FLEET_COMMANDS.site1-commands.&gt;&quot;
+              # uplink: deliver this site&#x27;s stream into FLEET_UPLINK,
+              # on a per-site prefix so site1 cannot write into another site&#x27;s copy
+              &quot;fleet.deliver.site1.&gt;&quot;
+              &quot;$JSC.R.&gt;&quot;
+            ]
+            # a site may never inject commands, even for its own robots
+            deny: [ &quot;sites.*.command.*.req&quot; ]
+          }
+          subscribe: {
+            allow: [
+              &quot;$JS.site1.API.&gt;&quot;   # hub -&gt; this site&#x27;s JetStream API (sourcing)
+              &quot;$JS.FC.&gt;&quot;          # flow-control replies for the uplink copy
+              &quot;_INBOX.&gt;&quot;          # replies to the edge app&#x27;s pull requests
+            ]
+          }
+      }}
+
+      { user: &quot;CN=leaf-site2,O=fleet&quot;, permissions: {
+          publish: {
+            allow: [
+              # downlink: pull + ack its OWN durable command consumer only
+              &quot;$JS.cloud.API.CONSUMER.MSG.NEXT.FLEET_COMMANDS.site2-commands&quot;
+              &quot;$JS.cloud.API.CONSUMER.INFO.FLEET_COMMANDS.site2-commands&quot;
+              &quot;$JS.ACK.FLEET_COMMANDS.site2-commands.&gt;&quot;
+              # uplink: deliver this site&#x27;s stream into FLEET_UPLINK,
+              # on a per-site prefix so site2 cannot write into another site&#x27;s copy
+              &quot;fleet.deliver.site2.&gt;&quot;
+              &quot;$JSC.R.&gt;&quot;
+            ]
+            # a site may never inject commands, even for its own robots
+            deny: [ &quot;sites.*.command.*.req&quot; ]
+          }
+          subscribe: {
+            allow: [
+              &quot;$JS.site2.API.&gt;&quot;   # hub -&gt; this site&#x27;s JetStream API (sourcing)
+              &quot;$JS.FC.&gt;&quot;          # flow-control replies for the uplink copy
+              &quot;_INBOX.&gt;&quot;          # replies to the edge app&#x27;s pull requests
+            ]
+          }
+      }}
+    ]
+  }
+  SYS { users: [ { user: sys, password: $SYS_PASS } ] }
+}
+system_account: SYS
+</code></pre></details>
+<details><summary>config/site1-leaf.conf</summary><pre><code># =============================================================================
+# SITE LEAF  --  site1
+#
+# Edge apps talk ONLY to this server, on the site LAN.
+#  - Uplink (telemetry, health, command results): published into the local
+#    stream SITE1_UPLINK. The publish ack comes from THIS server&#x27;s disk, so it
+#    succeeds even when the WAN is down. The cloud copies the stream when the
+#    link is back.
+#  - Downlink (commands): the edge app pulls its durable consumer on the CLOUD
+#    stream through this leaf ($JS.cloud.API...). While the link is down,
+#    commands wait in the cloud. Nats-TTL removes them once they are stale.
+# =============================================================================
+server_name: site1-leaf
+listen: 0.0.0.0:4222             # site LAN only
+
+jetstream {
+  domain: site1                  # the cloud reaches this as $JS.site1.API
+  store_dir: &quot;./data/site1&quot;
+  # Size = uplink rate x worst outage you must survive, plus headroom.
+  max_file_store: 20GB
+}
+
+accounts {
+  FLEET {
+    jetstream: enabled
+    users: [
+      { user: edge-app, password: $EDGE_APP_PASS, permissions: {
+          publish:   { allow: [ &quot;sites.site1.&gt;&quot;, &quot;$JS.API.STREAM.INFO.SITE1_UPLINK&quot;,
+                                &quot;$JS.cloud.API.CONSUMER.MSG.NEXT.FLEET_COMMANDS.site1-commands&quot;,
+                                &quot;$JS.cloud.API.CONSUMER.INFO.FLEET_COMMANDS.site1-commands&quot;,
+                                &quot;$JS.ACK.FLEET_COMMANDS.site1-commands.&gt;&quot; ],
+                       deny:  [ &quot;sites.site1.command.*.req&quot; ] }
+          subscribe: { allow: [ &quot;_INBOX.&gt;&quot; ] }
+      }}
+      # provisioning only (creates SITE1_UPLINK); not used by apps
+      { user: site-ops, password: $SITE_OPS_PASS }
+    ]
+  }
+  SYS { users: [ { user: sys, password: $SYS_PASS } ] }
+}
+system_account: SYS
+
+leafnodes {
+  # Dial OUT. Works behind NAT. The site needs no inbound port.
+  remotes: [
+    {
+      urls: [ &quot;tls://cloud-hub:7422&quot; ]
+      account: FLEET
+      tls {
+        ca_file:   &quot;./certs/ca.crt&quot;
+        # this site&#x27;s identity; private key never leaves the site
+        cert_file: &quot;./certs/leaf-site1.crt&quot;
+        key_file:  &quot;./certs/leaf-site1.key&quot;
+      }
+    }
+  ]
+  reconnect: &quot;2s&quot;
+}
+</code></pre></details>
+<details><summary>streams/SITE1_UPLINK.json (site domain)</summary><pre><code>{
+  &quot;name&quot;: &quot;SITE1_UPLINK&quot;,
+  &quot;subjects&quot;: [&quot;sites.site1.telemetry.&gt;&quot;, &quot;sites.site1.health.&gt;&quot;, &quot;sites.site1.command.*.res&quot;],
+  &quot;retention&quot;: &quot;limits&quot;,
+  &quot;storage&quot;: &quot;file&quot;,
+  &quot;num_replicas&quot;: 1,
+  &quot;max_age&quot;: 259200000000000,
+  &quot;max_bytes&quot;: 16106127360,
+  &quot;discard&quot;: &quot;new&quot;,
+  &quot;duplicate_window&quot;: 120000000000
+}
+</code></pre></details>
+<details><summary>streams/FLEET_UPLINK.json (cloud)</summary><pre><code>{
+  &quot;name&quot;: &quot;FLEET_UPLINK&quot;,
+  &quot;retention&quot;: &quot;limits&quot;,
+  &quot;storage&quot;: &quot;file&quot;,
+  &quot;num_replicas&quot;: 3,
+  &quot;max_age&quot;: 604800000000000,
+  &quot;duplicate_window&quot;: 120000000000,
+  &quot;sources&quot;: [
+    { &quot;name&quot;: &quot;SITE1_UPLINK&quot;, &quot;external&quot;: { &quot;api&quot;: &quot;$JS.site1.API&quot;, &quot;deliver&quot;: &quot;fleet.deliver.site1&quot; } },
+    { &quot;name&quot;: &quot;SITE2_UPLINK&quot;, &quot;external&quot;: { &quot;api&quot;: &quot;$JS.site2.API&quot;, &quot;deliver&quot;: &quot;fleet.deliver.site2&quot; } }
+  ]
+}
+</code></pre></details>
+<details><summary>streams/FLEET_COMMANDS.json (cloud)</summary><pre><code>{
+  &quot;name&quot;: &quot;FLEET_COMMANDS&quot;,
+  &quot;subjects&quot;: [&quot;sites.*.command.*.req&quot;],
+  &quot;retention&quot;: &quot;workqueue&quot;,
+  &quot;storage&quot;: &quot;file&quot;,
+  &quot;num_replicas&quot;: 3,
+  &quot;max_age&quot;: 3600000000000,
+  &quot;allow_msg_ttl&quot;: true,
+  &quot;duplicate_window&quot;: 900000000000
+}
+</code></pre></details>
+<details><summary>streams/site1-commands.consumer.json (cloud)</summary><pre><code>{
+  &quot;durable_name&quot;: &quot;site1-commands&quot;,
+  &quot;filter_subject&quot;: &quot;sites.site1.command.*.req&quot;,
+  &quot;deliver_policy&quot;: &quot;all&quot;,
+  &quot;ack_policy&quot;: &quot;explicit&quot;,
+  &quot;ack_wait&quot;: 30000000000,
+  &quot;max_deliver&quot;: -1,
+  &quot;max_ack_pending&quot;: 100
+}
+</code></pre></details>
+<details><summary>gen-certs.sh</summary><pre><code>#!/bin/bash
+# Fleet CA, hub server cert, and ONE client cert per site (per-leaf identity).
+# usage: ./gen-certs.sh cloud-hub.example.com site1 site2 ...
+set -euo pipefail
+HUB=$1; shift; mkdir -p certs; cd certs
+[ -f ca.key ] || openssl req -x509 -newkey rsa:2048 -nodes -keyout ca.key -out ca.crt -days 3650 -subj &quot;/CN=fleet-ca&quot;
+openssl req -newkey rsa:2048 -nodes -keyout cloud.key -out cloud.csr -subj &quot;/CN=$HUB&quot;
+printf &quot;subjectAltName=DNS:%s\nextendedKeyUsage=serverAuth&quot; &quot;$HUB&quot; &gt; s.ext
+openssl x509 -req -in cloud.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out cloud.crt -days 825 -extfile s.ext
+for s in &quot;$@&quot;; do
+  openssl req -newkey rsa:2048 -nodes -keyout leaf-$s.key -out leaf-$s.csr -subj &quot;/CN=leaf-$s/O=fleet&quot;
+  printf &quot;extendedKeyUsage=clientAuth&quot; &gt; c.ext
+  openssl x509 -req -in leaf-$s.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out leaf-$s.crt -days 825 -extfile c.ext
+  echo &quot;hub user for $s: \&quot;CN=leaf-$s,O=fleet\&quot;   (form verified against nats-server 2.12.1)&quot;
+done
+rm -f *.csr *.ext
+</code></pre></details>
+<h3>Adding a site</h3>
+<pre><code>./gen-certs.sh cloud-hub.example.com site3           # site3 key stays on site3
+# hub: add user "CN=leaf-site3,O=fleet" (copy the site1 block, s/site1/site3/), reload
+# site: copy site1-leaf.conf -&gt; site3-leaf.conf, s/site1/site3/
+nats --server site3 stream add --config SITE3_UPLINK.json
+nats --server cloud consumer add FLEET_COMMANDS --config site3-commands.consumer.json
+nats --server cloud stream edit FLEET_UPLINK          # add the SITE3_UPLINK source</code></pre>
+
+<h2 id="verify">Verification</h2>
+<p>Run on nats-server v2.12.1 and nats.go v1.46.1: one hub, two leaves, with site1's WAN routed through a TCP proxy that the test kills and restores. The harness and scenario are in <code>test/</code>.</p>
+<table><tr><th>Check</th><th>Observed</th></tr>
+<tr><td>Link up, site1 publishes seq 1–10</td><td class="ok">cloud 10 / 10</td></tr>
+<tr><td>WAN cut, site1 publishes seq 11–30</td><td class="ok">all 20 acked from site disk; cloud stays at 10</td></tr>
+<tr><td>During the cut, cloud queues <code>cmd-fresh</code> (TTL 15m) and <code>cmd-stale</code> (TTL 5s)</td><td class="ok">site pull fails (no responders); both held in the cloud</td></tr>
+<tr><td>7 s later</td><td class="ok">TTL removed <code>cmd-stale</code>; pending = 1</td></tr>
+<tr><td>WAN restored</td><td class="ok">cloud 30 / 30, in order, 0 gaps; site receives only <code>cmd-fresh</code>; ack empties the queue</td></tr>
+<tr><td>site1 <code>site-ops</code> requests <code>site2-commands</code></td><td class="ok">refused at the hub</td></tr>
+<tr><td>site1 publishes <code>sites.site1.command.arm-01.req</code></td><td class="ok">Permissions Violation</td></tr>
+<tr><td>leaf with a valid CA-signed cert, CN=leaf-site3 (not provisioned)</td><td class="ok">Authorization Violation, rejected</td></tr>
+<tr><td>site2 command round trip while site1 is cycling</td><td class="ok">delivered and acked</td></tr></table>
+
+<h3>What the test caught</h3>
+<p><b>1. Sourcing over a locked-down leaf.</b> The first permissions draft blocked <code>FLEET_UPLINK</code>: the cloud received 0 messages and logged no error. The source consumer delivers on <code>$JS.S.&lt;rand&gt;</code> and gets its create reply on <code>$JSC.R.&lt;rand&gt;</code> (<code>server/stream.go</code> <code>syncSubject("$JS.S")</code>, <code>server/jetstream_cluster.go</code> <code>infoReplySubject()</code>). Setting <code>external.deliver</code> to a per-site prefix (<code>fleet.deliver.siteN</code>) moves the data onto a subject that can be scoped per leaf.</p>
+<p><b>2. Leaves reconnecting around the load balancer.</b> After the simulated WAN cut, site1 reconnected straight to the hub's private IP. A connecting leaf always receives the hub's own leaf URL (<code>server/leafnode.go</code>: <code>s.leafURLsMap[s.leafNodeInfo.IP]++</code>), and <code>no_advertise</code> only affects gossip to cluster routes (<code>server/route.go</code>). The fix is <code>leafnodes.advertise</code> set to the public name.</p>
+
+<h2 id="gaps">Open items</h2>
+<ul>
+<li><code>$JSC.R.&gt;</code> (publish) and <code>$JS.FC.&gt;</code> / <code>_INBOX.&gt;</code> (subscribe) are not per-site. They are random reply subjects, so the risk is low, but a site could in principle reach another site's reply subject. Separate accounts per site, with exports and imports, close this at the cost of more config.</li>
+<li>Tested with a single hub node. Production needs a 3-node hub cluster (the JSON already sets <code>num_replicas: 3</code>) and a load balancer named in <code>advertise</code>.</li>
+<li>Delivery is at-least-once: dedupe on <code>commandId</code> at the edge, and use <code>Nats-Msg-Id</code> on every uplink publish.</li>
+<li>Certificate rotation and revocation (OCSP or a CRL on the leaf listener) are not covered yet.</li>
+</ul>
+</main></body></html>

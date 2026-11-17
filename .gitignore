@@ -1,0 +1,4 @@
+certs/
+test/run/
+test/harness
+*.key

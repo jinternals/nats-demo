@@ -1,0 +1,11 @@
+{
+  "name": "SITE1_UPLINK",
+  "subjects": ["sites.site1.telemetry.>", "sites.site1.health.>", "sites.site1.command.*.res"],
+  "retention": "limits",
+  "storage": "file",
+  "num_replicas": 1,
+  "max_age": 259200000000000,
+  "max_bytes": 16106127360,
+  "discard": "new",
+  "duplicate_window": 120000000000
+}

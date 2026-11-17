@@ -1,0 +1,10 @@
+{
+  "name": "FLEET_COMMANDS",
+  "subjects": ["sites.*.command.*.req"],
+  "retention": "workqueue",
+  "storage": "file",
+  "num_replicas": 3,
+  "max_age": 3600000000000,
+  "allow_msg_ttl": true,
+  "duplicate_window": 900000000000
+}

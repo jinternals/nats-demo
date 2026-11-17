@@ -1,0 +1,12 @@
+{
+  "name": "FLEET_UPLINK",
+  "retention": "limits",
+  "storage": "file",
+  "num_replicas": 3,
+  "max_age": 604800000000000,
+  "duplicate_window": 120000000000,
+  "sources": [
+    { "name": "SITE1_UPLINK", "external": { "api": "$JS.site1.API", "deliver": "fleet.deliver.site1" } },
+    { "name": "SITE2_UPLINK", "external": { "api": "$JS.site2.API", "deliver": "fleet.deliver.site2" } }
+  ]
+}
