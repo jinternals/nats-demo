@@ -2,3 +2,4 @@ certs/
 test/run/
 test/harness
 *.key
+__pycache__/

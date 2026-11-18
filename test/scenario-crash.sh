@@ -1,7 +1,7 @@
 #!/bin/bash
 # Failure modes the MQTT repo documents, replayed against the NATS design:
 # outage + site server crash + hub restart, then restore.
-cd /home/claude/nats-edge/test; H=./harness; T=run
+cd "$(dirname "$0")"; H=./harness; T=run
 export CLOUD_APP_PASS=cloudpw SYS_PASS=syspw EDGE_APP_PASS=edgepw SITE_OPS_PASS=opspw
 restart() { kill -9 $(cat $T/$1.pid); sleep 1; nats-server -c $T/$1.conf -l $T/$1.log >/dev/null 2>&1 & echo $! > $T/$1.pid; sleep 3; }
 pkill nats-server; pkill -f wanproxy; sleep 1; ./run.sh >/dev/null

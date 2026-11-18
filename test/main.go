@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +16,14 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-const root = "/home/claude/nats-edge"
+// repo root: $NATS_DEMO_ROOT, else the parent of the working directory (run from test/)
+var root = func() string {
+	if r := os.Getenv("NATS_DEMO_ROOT"); r != "" {
+		return r
+	}
+	wd, _ := os.Getwd()
+	return filepath.Dir(wd)
+}()
 
 func must(err error) {
 	if err != nil {

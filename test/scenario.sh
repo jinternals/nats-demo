@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /home/claude/nats-edge/test; H=./harness; T=run
+cd "$(dirname "$0")"; H=./harness; T=run
 pkill nats-server; pkill -f wanproxy; sleep 1; ./run.sh
 $H setup && $H edge-pub site1 1 10 && $H edge-pub site2 1 5 && sleep 2 && $H cloud-count
 echo "=== CUT site1 WAN ==="; kill $(cat $T/wan.pid); sleep 3
