@@ -16,7 +16,8 @@ $H edge-pub site1 31 40
 echo "=== kill -9 cloud hub mid-outage, restart ==="; restart cloud
 $H cloud-count | head -2
 sleep 2
-echo "=== RESTORE site1 WAN ==="; python3 wanproxy.py 17422 7422 >/dev/null 2>&1 & echo $! > $T/wan.pid; sleep 20
+echo "=== RESTORE site1 WAN ==="; n0=$(grep -c "Leafnode connection created for account" $T/site1.log); python3 wanproxy.py 17422 7422 >/dev/null 2>&1 & echo $! > $T/wan.pid
+for i in $(seq 30); do [ $(grep -c "Leafnode connection created for account" $T/site1.log) -gt $n0 ] && break; sleep 1; done; sleep 3; echo "site1 reconnected after ~${i}s"
 $H source-info
 $H cloud-count
 $H edge-pull site1 site1

@@ -8,7 +8,8 @@ $H cloud-cmd site1 arm-01 cmd-fresh 15m
 $H cloud-cmd site1 arm-01 cmd-stale 5s
 $H edge-pull site1 site1
 sleep 7; $H cloud-count
-echo "=== RESTORE site1 WAN ==="; python3 wanproxy.py 17422 7422 & echo $! > $T/wan.pid; sleep 6
+echo "=== RESTORE site1 WAN ==="; n0=$(grep -c "Leafnode connection created for account" $T/site1.log); python3 wanproxy.py 17422 7422 >/dev/null 2>&1 & echo $! > $T/wan.pid
+for i in $(seq 30); do [ $(grep -c "Leafnode connection created for account" $T/site1.log) -gt $n0 ] && break; sleep 1; done; sleep 3; echo "site1 reconnected after ~${i}s"
 $H cloud-count
 $H edge-pull site1 site1
 $H edge-pull site1 site1
