@@ -53,11 +53,11 @@ Evidence key: **M** measured in `test/` (nats-server 2.12.1, nats.go 1.46.1) ·
 | **Commands: expiry** | `Nats-TTL` deletes it in the cloud before it ships (**M**) | The command API must filter expired commands at fetch time; the edge `expiresAt` check stays either way (**D**) |
 | **Flow control / backpressure** | Built into sourcing (`$JS.FC`) (**S**) | HTTP 429/503 + `Retry-After`, and a bridge that honours them (**D**) |
 | **Per-site identity** | Client cert, `verify_and_map`: the cert subject is the user (**M**) | Client cert or token checked by the API, or by a gateway in front of it (**D**) |
-| **Per-site authorization** | Subject permissions on the hub. Cross-site pull refused, command injection denied, unknown cert rejected (**M**) | Written in API code: every endpoint must check the path's site against the caller. One missed check is a cross-site hole (**D**) |
-| **HTTPS-only egress, corporate proxy** | Leaf over `wss://` through an HTTP CONNECT proxy, same cert and permissions. 20/20 uplink, command delivered, cross-site refused, unknown cert → `Authorization Violation` (**M**, `scenario-wss.sh`) | Native: plain HTTPS (**D**) |
+| **Per-site authorization** | One hub account per site, generated; only that site's stream, consumer and flow control cross the boundary. Cross-site pull refused, command injection denied, unknown cert rejected, full-rights `>` sniff on site1 saw 0 site2 messages (**M**) | Written in API code: every endpoint must check the path's site against the caller. One missed check is a cross-site hole (**D**) |
+| **HTTPS-only egress, corporate proxy** | Leaf over `wss://` through an HTTP CONNECT proxy, same cert and same site account. 20/20 uplink, command delivered, cross-site refused, unknown cert → `Authorization Violation` (**M**, `scenario-wss.sh`) | Native: plain HTTPS (**D**) |
 | **TLS-inspecting proxy** (MITM, re-signs certificates) | Client-cert mTLS can't pass a proxy that terminates TLS, on either transport (**D**) | Same limit for client certs. Token auth survives inspection (**D**) |
 | **Silent failure modes** | Hub-side leaf denials are silent (`no responders`, no hub log line), and a mis-permissioned source stalls at 0 with no error (**M**). Monitor source last-seen and leaf DISCONNECT events | The bridge stalls (crash loop, stuck saved position, expired token) while the site keeps acking locally: the same "green dashboards" failure, inside your own code (**D**) |
-| **Site-offline signal** | `$SYS.ACCOUNT.FLEET.DISCONNECT` with the cert identity, ~1 min for a black-holed link with ping 20s/2 (**M**) | Heartbeat endpoint plus staleness timer (**D**) |
+| **Site-offline signal** | `$SYS.ACCOUNT.SITEn.DISCONNECT` with the cert identity, ~1 min for a black-holed link with ping 20s/2 (**M**) | Heartbeat endpoint plus staleness timer (**D**) |
 | **What you run and own** | nats-server at the site and in the cloud; config only (**M**) | Everything in A's site and cloud, **plus** a bridge service per site and an ingest + command API. Code you write, test, version and roll out to 500 sites (**D**) |
 | **Contract between site and cloud** | The subject namespace plus three stream/consumer names | An HTTP API: easier to version, document and put behind a gateway (**D**) |
 | **Operations tooling** | NATS-specific: `$SYS` events, `nats` CLI, stream info | Standard HTTP: load balancers, WAF, API gateway, access logs (**D**) |
@@ -73,7 +73,7 @@ in application code, which is where the MQTT design's silent failures came from.
 Transport per site:
 - **Default:** `tls://hub:7422`.
 - **HTTPS-only egress:** `wss://hub:443`, with `proxy { url: … }` if the site's
-  egress uses a CONNECT proxy. Same certificate, same permissions, no code change.
+  egress uses a CONNECT proxy. Same certificate, same site account, no code change.
 
 ## When option B is the right call instead
 
@@ -102,7 +102,8 @@ Transport per site:
 |---|---|
 | `test/scenario.sh` | outage, uplink catch-up, TTL expiry, cross-site and injection denial |
 | `test/scenario-crash.sh` | site and hub `kill -9` mid-outage, leaf connect/disconnect events |
-| `test/scenario-wss.sh` | leaf over `wss://` through an HTTP CONNECT proxy, same identity and permissions |
+| `test/scenario-wss.sh` | leaf over `wss://` through an HTTP CONNECT proxy, same identity and account |
+| `test/scenario-cluster.sh` | 3-node hub: stream leader killed mid catch-up, rogue route rejected |
 
 Found while testing the WebSocket path: in a leaf remote, the `proxy { }` block
 must come **after** `tls { }`. nats-server 2.12.1 validates it as it parses and

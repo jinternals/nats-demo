@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -24,6 +25,10 @@ var root = func() string {
 	wd, _ := os.Getwd()
 	return filepath.Dir(wd)
 }()
+
+// Sites reach their command consumer in the cloud through this prefix; the
+// hub maps it, per site account, onto FLEET's $JS.API (see gen-hub-accounts.sh).
+const hubAPI = "$JS.hub.API"
 
 func must(err error) {
 	if err != nil {
@@ -42,7 +47,9 @@ func conn(url, user, pass string, tls bool) *nats.Conn {
 	return nc
 }
 
-func cloud() *nats.Conn { return conn("tls://localhost:4222", "cloud-app", "cloudpw", true) }
+const hubURLs = "tls://localhost:4212,tls://localhost:4222,tls://localhost:4232"
+
+func cloud() *nats.Conn { return conn(hubURLs, "cloud-app", "cloudpw", true) }
 func site(n string) string {
 	return map[string]string{"site1": "nats://localhost:4223", "site2": "nats://localhost:4224"}[n]
 }
@@ -54,13 +61,27 @@ func loadStream(name string, replicas int) jetstream.StreamConfig {
 	must(err)
 	var c jetstream.StreamConfig
 	must(json.Unmarshal(b, &c))
-	c.Replicas = replicas // single-node test
+	if replicas > 0 {
+		c.Replicas = replicas
+	}
 	return c
 }
 
-func ctx() context.Context { c, _ := context.WithTimeout(context.Background(), 10*time.Second); return c }
+// every request gets its own 10s deadline; all are released on exit
+var cancels []context.CancelFunc
+
+func ctx() context.Context {
+	c, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	cancels = append(cancels, cancel)
+	return c
+}
 
 func main() {
+	defer func() {
+		for _, c := range cancels {
+			c()
+		}
+	}()
 	cmd := os.Args[1]
 	switch cmd {
 	case "setup":
@@ -70,9 +91,9 @@ func main() {
 			must(err)
 		}
 		js, _ := jetstream.New(cloud())
-		_, err := js.CreateOrUpdateStream(ctx(), loadStream("FLEET_COMMANDS", 1))
+		_, err := js.CreateOrUpdateStream(ctx(), loadStream("FLEET_COMMANDS", 0))
 		must(err)
-		_, err = js.CreateOrUpdateStream(ctx(), loadStream("FLEET_UPLINK", 1))
+		_, err = js.CreateOrUpdateStream(ctx(), loadStream("FLEET_UPLINK", 0))
 		must(err)
 		b, _ := os.ReadFile(root + "/streams/site1-commands.consumer.json")
 		for _, s := range []string{"site1", "site2"} {
@@ -107,7 +128,7 @@ func main() {
 
 	case "edge-pull": // edge-pull site consumerSite
 		s, cs := os.Args[2], os.Args[3]
-		js, _ := jetstream.NewWithDomain(edge(s), "cloud")
+		js, _ := jetstream.NewWithAPIPrefix(edge(s), hubAPI)
 		cons, err := js.Consumer(ctx(), "FLEET_COMMANDS", cs+"-commands")
 		must(err)
 		batch, err := cons.Fetch(10, jetstream.FetchMaxWait(3*time.Second))
@@ -124,7 +145,7 @@ func main() {
 		fmt.Printf("edge %s pulled %d command(s)\n", s, n)
 
 	case "ops-steal": // full-permission site user tries another site's commands; hub must refuse
-		js, _ := jetstream.NewWithDomain(ops(os.Args[2]), "cloud")
+		js, _ := jetstream.NewWithAPIPrefix(ops(os.Args[2]), hubAPI)
 		_, err := js.Consumer(ctx(), "FLEET_COMMANDS", os.Args[3]+"-commands")
 		fmt.Println("ops-steal result:", err)
 
@@ -139,13 +160,13 @@ func main() {
 		}
 
 	case "sys-watch": // sys-watch seconds
-		nc := conn("tls://localhost:4222", "sys", "syspw", true)
+		nc := conn(hubURLs, "sys", "syspw", true)
 		sec, _ := strconv.Atoi(os.Args[2])
-		nc.Subscribe("$SYS.ACCOUNT.FLEET.>", func(m *nats.Msg) {
+		nc.Subscribe("$SYS.ACCOUNT.*.>", func(m *nats.Msg) { // leaves bind to their SITEn account
 			var ev struct {
-				Type   string `json:"type"`
+				Type   string                            `json:"type"`
 				Client struct{ Kind, User, Name string } `json:"client"`
-				Reason string `json:"reason"`
+				Reason string                            `json:"reason"`
 			}
 			json.Unmarshal(m.Data, &ev)
 			if strings.Contains(m.Subject, "CONNECT") || strings.Contains(m.Subject, "DISCONNECT") {
@@ -153,6 +174,76 @@ func main() {
 			}
 		})
 		time.Sleep(time.Duration(sec) * time.Second)
+
+	case "ops-sniff": // ops-sniff site seconds: full-rights site user listens on ">"
+		nc := ops(os.Args[2])
+		sec, _ := strconv.Atoi(os.Args[3])
+		seen := map[string]int{}
+		var mu sync.Mutex
+		nc.Subscribe(">", func(m *nats.Msg) {
+			p := strings.SplitN(m.Subject, ".", 4)
+			k := strings.Join(p[:min(3, len(p))], ".")
+			mu.Lock()
+			seen[k]++
+			mu.Unlock()
+		})
+		nc.Flush()
+		time.Sleep(time.Duration(sec) * time.Second)
+		mu.Lock()
+		foreign := 0
+		for k, n := range seen {
+			if strings.Contains(strings.ToLower(k), "site2") {
+				foreign += n
+			}
+			fmt.Printf("  %s seen on %s: %s x%d\n", os.Args[2], os.Args[2], k, n)
+		}
+		mu.Unlock()
+		fmt.Printf("%s sniff: %d message(s) mentioning site2\n", os.Args[2], foreign)
+
+	case "wait-uplink": // wait-uplink SITE N SECONDS: poll FLEET_UPLINK until SITE has N telemetry msgs
+		js, _ := jetstream.New(cloud())
+		want, _ := strconv.Atoi(os.Args[3])
+		sec, _ := strconv.Atoi(os.Args[4])
+		subj := "sites." + os.Args[2] + ".telemetry.>"
+		t0 := time.Now()
+		var got uint64
+		for time.Since(t0) < time.Duration(sec)*time.Second {
+			if st, err := js.Stream(ctx(), "FLEET_UPLINK"); err == nil {
+				if info, err := st.Info(ctx(), jetstream.WithSubjectFilter(subj)); err == nil {
+					got = 0
+					for _, n := range info.State.Subjects {
+						got += n
+					}
+					if got >= uint64(want) {
+						break
+					}
+				}
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		fmt.Printf("uplink %s: %d/%d in cloud after %.0fs\n", os.Args[2], got, want, time.Since(t0).Seconds())
+
+	case "leader": // leader STREAM -> prints leader name only (for scripts)
+		js, _ := jetstream.New(cloud())
+		st, err := js.Stream(ctx(), os.Args[2])
+		must(err)
+		info, err := st.Info(ctx())
+		must(err)
+		fmt.Println(info.Cluster.Leader)
+
+	case "replicas": // replicas STREAM...
+		js, _ := jetstream.New(cloud())
+		for _, n := range os.Args[2:] {
+			st, err := js.Stream(ctx(), n)
+			must(err)
+			info, err := st.Info(ctx())
+			must(err)
+			fmt.Printf("%s R%d leader=%s msgs=%d", n, info.Config.Replicas, info.Cluster.Leader, info.State.Msgs)
+			for _, r := range info.Cluster.Replicas {
+				fmt.Printf(" | %s current=%v lag=%d", r.Name, r.Current, r.Lag)
+			}
+			fmt.Println()
+		}
 
 	case "edge-inject": // site tries to forge a command
 		nc := edge(os.Args[2])
@@ -177,22 +268,42 @@ func main() {
 		cq, _ := js.Stream(ctx(), "FLEET_COMMANDS")
 		ci, _ := cq.Info(ctx())
 		fmt.Printf("FLEET_COMMANDS pending=%d\n", ci.State.Msgs)
-		// verify order + no gaps for site1
-		c, err := st.OrderedConsumer(ctx(), jetstream.OrderedConsumerConfig{FilterSubjects: []string{"sites.site1.telemetry.>"}})
+		// verify order + no gaps for site1.
+		// Measured: for ~3 min after a hub node dies, about 1 in 3 ephemeral
+		// R1 consumer creates time out (placed on the dead peer). nats.go's
+		// OrderedConsumer is an R1 ephemeral and its Next() then blocked past
+		// its own max-wait. So: a plain ephemeral, created with a short
+		// timeout and retried. Durable R3 consumers were not affected.
+		var c jetstream.Consumer
+		for try := 1; ; try++ {
+			cctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			c, err = st.CreateConsumer(cctx, jetstream.ConsumerConfig{
+				FilterSubject: "sites.site1.telemetry.>", AckPolicy: jetstream.AckNonePolicy,
+				MemoryStorage: true, Replicas: 1, InactiveThreshold: 30 * time.Second})
+			cancel()
+			if err == nil || try == 10 {
+				break
+			}
+		}
 		must(err)
 		last, gaps, n := 0, 0, 0
 		for {
-			m, err := c.Next(jetstream.FetchMaxWait(time.Second))
-			if err != nil {
+			b, err := c.Fetch(1000, jetstream.FetchMaxWait(time.Second))
+			must(err)
+			got := 0
+			for m := range b.Messages() {
+				var v struct{ Seq int }
+				json.Unmarshal(m.Data(), &v)
+				if v.Seq != last+1 {
+					gaps++
+				}
+				last = v.Seq
+				n++
+				got++
+			}
+			if got == 0 {
 				break
 			}
-			var v struct{ Seq int }
-			json.Unmarshal(m.Data(), &v)
-			if v.Seq != last+1 {
-				gaps++
-			}
-			last = v.Seq
-			n++
 		}
 		fmt.Printf("site1 telemetry in cloud: count=%d last=%d out-of-order/gaps=%d\n", n, last, gaps)
 	}
