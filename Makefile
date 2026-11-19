@@ -3,7 +3,7 @@ HUB_NAMES := cloud-hub,cloud-hub-1,cloud-hub-2,cloud-hub-3,localhost
 
 .PHONY: up down test logs status cut-% restore-% kill-% start-%
 
-up: certs/ca.crt config/hub-accounts.conf   ## start everything and create streams
+up: certs/ca.crt config/generated/hub-accounts.conf   ## start everything and create streams
 	docker compose up -d
 	docker compose logs -f setup | sed -n '/setup complete/q;p'
 
@@ -35,5 +35,5 @@ start-%:
 certs/ca.crt:
 	scripts/gen-certs.sh certs $(HUB_NAMES) $(SITES)
 
-config/hub-accounts.conf: scripts/gen-hub-accounts.sh Makefile
-	scripts/gen-hub-accounts.sh $(SITES) > $@
+config/generated/hub-accounts.conf: scripts/generate.sh Makefile
+	scripts/generate.sh $(SITES)

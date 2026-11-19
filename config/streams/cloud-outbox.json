@@ -1,6 +1,6 @@
 {
-  "name": "fleet-commands",
-  "subjects": ["fleet.*.*.command"],
+  "name": "cloud-outbox",
+  "subjects": ["cloud.to.site.*.*"],
   "retention": "workqueue",
   "storage": "file",
   "num_replicas": 3,

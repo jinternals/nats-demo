@@ -1,9 +1,0 @@
-{
-  "durable_name": "site2-commands",
-  "filter_subject": "fleet.site2.*.command",
-  "deliver_policy": "all",
-  "ack_policy": "explicit",
-  "ack_wait": 30000000000,
-  "max_deliver": -1,
-  "max_ack_pending": 100
-}

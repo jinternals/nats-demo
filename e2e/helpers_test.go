@@ -15,19 +15,36 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-// Endpoints published by compose.yaml, credentials are its dev defaults.
+// Endpoints published by compose.yaml; credentials are its dev defaults.
 const (
 	hubURLs = "tls://localhost:4222,tls://localhost:4232,tls://localhost:4242"
 	caFile  = "../certs/ca.crt"
-	// Sites reach their command consumer in the cloud through this prefix;
-	// the hub maps it onto the fleet account (scripts/gen-hub-accounts.sh).
-	cloudAPI = "_fleet.api"
+	// A site controller reaches its consumer on cloud-outbox through this
+	// prefix; the hub maps it into the cloud account (scripts/generate.sh).
+	edgeAPI = "_edge.api"
 )
 
 var (
 	siteURL     = map[string]string{"site1": "nats://localhost:4223", "site2": "nats://localhost:4224"}
 	siteMonitor = map[string]string{"site1": "http://localhost:8223", "site2": "http://localhost:8224"}
 )
+
+// Subjects, one function per hop (docs/naming.md).
+func cloudToSite(site, typ string) string    { return "cloud.to.site." + site + "." + typ }
+func siteToCloud(site, typ string) string    { return "site.to.cloud." + site + "." + typ }
+func siteToDevice(device, typ string) string { return "site.to.device." + device + "." + typ }
+func deviceToSite(device, typ string) string { return "device.to.site." + device + "." + typ }
+
+// The event payload carries the device id and a sequence number. The subject
+// the cloud sees has no device id; tests read it from the payload.
+type event struct {
+	Device string `json:"device"`
+	Seq    int    `json:"seq"`
+}
+
+type command struct {
+	CommandID string `json:"commandId"`
+}
 
 func env(k, def string) string {
 	if v := os.Getenv(k); v != "" {
@@ -53,11 +70,18 @@ func connect(t *testing.T, url, user, pass string, opts ...nats.Option) *nats.Co
 func cloudApp(t *testing.T) *nats.Conn {
 	return connect(t, hubURLs, "cloud-app", env("CLOUD_APP_PASS", "dev-cloud"))
 }
-func edgeApp(t *testing.T, site string) *nats.Conn {
-	return connect(t, siteURL[site], "edge-app", env("EDGE_APP_PASS", "dev-edge"))
+func device(t *testing.T, site string) *nats.Conn {
+	return connect(t, siteURL[site], "device", env("DEVICE_PASS", "dev-device"))
+}
+func controller(t *testing.T, site string) *nats.Conn {
+	return connect(t, siteURL[site], "site-controller", env("SITE_CONTROLLER_PASS", "dev-controller"))
 }
 func siteOps(t *testing.T, site string) *nats.Conn {
 	return connect(t, siteURL[site], "site-ops", env("SITE_OPS_PASS", "dev-ops"))
+}
+
+func newEdgeAPI(nc *nats.Conn) (jetstream.JetStream, error) {
+	return jetstream.NewWithAPIPrefix(nc, edgeAPI)
 }
 
 func ctx(t *testing.T, d time.Duration) context.Context {
@@ -87,75 +111,98 @@ func cutWAN(t *testing.T, site string) (restore func()) {
 	return restore
 }
 
-// robot returns a robot id unique to this test run, so tests don't see each other's data.
-func robot(t *testing.T) string {
-	return fmt.Sprintf("%s-%d", strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-")), time.Now().UnixNano()%1e6)
+// deviceID returns a device id unique to this test run.
+func deviceID(t *testing.T) string {
+	name := strings.ToLower(strings.TrimPrefix(t.Name(), "Test"))
+	name = strings.NewReplacer("/", "-", "_", "-", " ", "-", "'", "").Replace(name)
+	return fmt.Sprintf("%s-%d", name, time.Now().UnixNano()%1e6)
 }
 
-func telemetry(site, robot string) string { return "fleet." + site + "." + robot + ".telemetry" }
-func command(site, robot string) string   { return "fleet." + site + "." + robot + ".command" }
-
-// publishTelemetry publishes events seq from..to as the edge app; each one is
-// acked by the site's own server (its local stream), not the cloud.
-func publishTelemetry(t *testing.T, site, robot string, from, to int) {
+// publishEvents publishes events seq from..to as a device. Each is acked by
+// the site's own server (<site>-outbox), not by the cloud.
+func publishEvents(t *testing.T, site, dev, typ string, from, to int) {
 	t.Helper()
-	js, _ := jetstream.New(edgeApp(t, site))
+	js, _ := jetstream.New(device(t, site))
 	for i := from; i <= to; i++ {
-		_, err := js.Publish(ctx(t, 5*time.Second), telemetry(site, robot), []byte(fmt.Sprintf(`{"seq":%d}`, i)),
-			jetstream.WithMsgID(fmt.Sprintf("%s-%d", robot, i)), jetstream.WithExpectStream(site+"-uplink"))
+		data, _ := json.Marshal(event{Device: dev, Seq: i})
+		_, err := js.Publish(ctx(t, 5*time.Second), deviceToSite(dev, typ), data,
+			jetstream.WithMsgID(fmt.Sprintf("%s-%s-%d", dev, typ, i)), jetstream.WithExpectStream(site+"-outbox"))
 		if err != nil {
-			t.Fatalf("publish seq %d: %v", i, err)
+			t.Fatalf("publish %s seq %d: %v", deviceToSite(dev, typ), i, err)
 		}
 	}
 }
 
-// cloudCount returns how many events for this robot are in fleet-uplink.
-func cloudCount(t *testing.T, site, robot string) int {
+func cloudInbox(t *testing.T) jetstream.Stream {
 	t.Helper()
 	js, _ := jetstream.New(cloudApp(t))
-	st, err := js.Stream(ctx(t, 5*time.Second), "fleet-uplink")
+	st, err := js.Stream(ctx(t, 5*time.Second), "cloud-inbox")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return st
+}
+
+// mark records where cloud-inbox stands, so a test counts and reads only
+// what arrived after it. Tests run one at a time.
+type mark struct {
+	lastSeq uint64
+	count   map[string]uint64
+}
+
+func markInbox(t *testing.T) mark {
+	t.Helper()
+	info, err := cloudInbox(t).Info(ctx(t, 5*time.Second), jetstream.WithSubjectFilter("site.to.cloud.>"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return mark{info.State.LastSeq, info.State.Subjects}
+}
+
+// arrived returns how many messages on subj reached cloud-inbox since m,
+// or -1 if the hub didn't answer (e.g. while a stream leader changes).
+func arrived(t *testing.T, m mark, subj string) int {
+	t.Helper()
+	js, _ := jetstream.New(cloudApp(t))
+	st, err := js.Stream(ctx(t, 5*time.Second), "cloud-inbox")
 	if err != nil {
 		return -1
 	}
-	subj := telemetry(site, robot)
 	info, err := st.Info(ctx(t, 5*time.Second), jetstream.WithSubjectFilter(subj))
 	if err != nil {
 		return -1
 	}
-	return int(info.State.Subjects[subj]) // State.Msgs is the whole stream, not the filter
+	return int(info.State.Subjects[subj] - m.count[subj])
 }
 
-// waitCloudCount polls until the cloud has want events. After an outage the
-// copy can start late: a failing source retries with a growing backoff,
-// capped at 2 minutes (nats-server stream.go).
-func waitCloudCount(t *testing.T, site, robot string, want int, timeout time.Duration) {
+// waitArrived polls until want messages on subj arrived since m. After an
+// outage the copy can start late: a failing source retries with a growing
+// backoff, capped at 2 minutes (nats-server stream.go).
+func waitArrived(t *testing.T, m mark, subj string, want int, timeout time.Duration) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	got := 0
 	for time.Now().Before(deadline) {
-		if got = cloudCount(t, site, robot); got >= want {
+		if got = arrived(t, m, subj); got >= want {
 			return
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	t.Fatalf("cloud has %d/%d events for %s after %s", got, want, robot, timeout)
+	t.Fatalf("%d/%d messages on %s after %s", got, want, subj, timeout)
 }
 
-// assertInOrder reads this robot's events from fleet-uplink and checks seq 1..n, no gaps.
-func assertInOrder(t *testing.T, site, robot string, n int) {
+// readSince returns messages on subj in cloud-inbox after m, in stream order.
+func readSince(t *testing.T, m mark, subj string, max int) []jetstream.Msg {
 	t.Helper()
-	js, _ := jetstream.New(cloudApp(t))
-	st, err := js.Stream(ctx(t, 5*time.Second), "fleet-uplink")
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Plain ephemeral consumer, retried: for ~3 minutes after a hub node dies,
-	// about 1 in 3 ephemeral R1 creates time out (placed on the dead peer).
+	st := cloudInbox(t)
+	// Created with a short timeout and retried: for a few minutes after a hub
+	// node dies, some short-lived (R1) consumer creates time out.
 	var c jetstream.Consumer
+	var err error
 	for try := 0; try < 10; try++ {
 		c, err = st.CreateConsumer(ctx(t, 2*time.Second), jetstream.ConsumerConfig{
-			FilterSubject: telemetry(site, robot), AckPolicy: jetstream.AckNonePolicy,
-			MemoryStorage: true, Replicas: 1, InactiveThreshold: 30 * time.Second})
+			FilterSubject: subj, DeliverPolicy: jetstream.DeliverByStartSequencePolicy, OptStartSeq: m.lastSeq + 1,
+			AckPolicy: jetstream.AckNonePolicy, MemoryStorage: true, Replicas: 1, InactiveThreshold: 30 * time.Second})
 		if err == nil {
 			break
 		}
@@ -163,44 +210,66 @@ func assertInOrder(t *testing.T, site, robot string, n int) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	next := 1
-	for next <= n {
+	var out []jetstream.Msg
+	for len(out) < max {
 		batch, err := c.Fetch(1000, jetstream.FetchMaxWait(2*time.Second))
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := 0
-		for m := range batch.Messages() {
-			var v struct{ Seq int }
-			json.Unmarshal(m.Data(), &v)
-			if v.Seq != next {
-				t.Fatalf("expected seq %d, got %d", next, v.Seq)
-			}
-			next++
-			got++
+		n := 0
+		for msg := range batch.Messages() {
+			out = append(out, msg)
+			n++
 		}
-		if got == 0 {
-			t.Fatalf("stopped at seq %d of %d", next-1, n)
+		if n == 0 {
+			break
 		}
+	}
+	return out
+}
+
+// assertInOrder checks this device's events arrived as seq 1..n, no gaps or repeats.
+func assertInOrder(t *testing.T, m mark, site, dev, typ string, n int) {
+	t.Helper()
+	next := 1
+	for _, msg := range readSince(t, m, siteToCloud(site, typ), 1<<30) {
+		var e event
+		json.Unmarshal(msg.Data(), &e)
+		if e.Device != dev {
+			continue
+		}
+		if e.Seq != next {
+			t.Fatalf("expected seq %d, got %d", next, e.Seq)
+		}
+		next++
+	}
+	if next-1 != n {
+		t.Fatalf("cloud has %d events from %s, want %d", next-1, dev, n)
 	}
 }
 
-// queueCommand publishes a command from the cloud with a per-message TTL.
-func queueCommand(t *testing.T, site, robot, id string, ttl time.Duration) {
+// queueCommand publishes a command for a site from the cloud, with a TTL.
+// The cloud names only the site; the site controller picks the device.
+func queueCommand(t *testing.T, site, id string, ttl time.Duration) {
 	t.Helper()
 	js, _ := jetstream.New(cloudApp(t))
-	_, err := js.Publish(ctx(t, 5*time.Second), command(site, robot), []byte(`{"commandId":"`+id+`"}`),
+	data, _ := json.Marshal(command{CommandID: id})
+	_, err := js.Publish(ctx(t, 5*time.Second), cloudToSite(site, "command"), data,
 		jetstream.WithMsgID(id), jetstream.WithMsgTTL(ttl))
 	if err != nil {
 		t.Fatalf("queue command %s: %v", id, err)
 	}
 }
 
-// pullCommands fetches and acks this site's pending commands, returning their ids.
-func pullCommands(t *testing.T, site string) ([]string, error) {
+// runController plays the site controller once: pulls the site's pending
+// commands from the cloud, sends each to the device chosen by route as a
+// request on site.to.device.<device>.command, and acks it in the cloud only
+// after the device confirmed. Returns the ids it delivered.
+func runController(t *testing.T, site string, route func(command) string) ([]string, error) {
 	t.Helper()
-	js, _ := jetstream.NewWithAPIPrefix(edgeApp(t, site), cloudAPI)
-	cons, err := js.Consumer(ctx(t, 5*time.Second), "fleet-commands", site+"-commands")
+	nc := controller(t, site)
+	js, _ := newEdgeAPI(nc)
+	cons, err := js.Consumer(ctx(t, 5*time.Second), "cloud-outbox", site+"-controller")
 	if err != nil {
 		return nil, err
 	}
@@ -209,15 +278,56 @@ func pullCommands(t *testing.T, site string) ([]string, error) {
 		return nil, err
 	}
 	var ids []string
-	for m := range batch.Messages() {
-		var v struct{ CommandID string }
-		json.Unmarshal(m.Data(), &v)
-		ids = append(ids, v.CommandID)
-		if err := m.DoubleAck(ctx(t, 5*time.Second)); err != nil {
+	for msg := range batch.Messages() {
+		var c command
+		json.Unmarshal(msg.Data(), &c)
+		dev := route(c)
+		if _, err := nc.Request(siteToDevice(dev, "command"), msg.Data(), 5*time.Second); err != nil {
+			msg.Nak()
+			return ids, fmt.Errorf("device %s: %w", dev, err)
+		}
+		if err := msg.DoubleAck(ctx(t, 5*time.Second)); err != nil {
 			return ids, err
 		}
+		ids = append(ids, c.CommandID)
 	}
 	return ids, batch.Error()
+}
+
+// drainCommands acks everything pending for a site, so a test starts clean.
+func drainCommands(t *testing.T, site string) {
+	t.Helper()
+	js, _ := newEdgeAPI(controller(t, site))
+	cons, err := js.Consumer(ctx(t, 5*time.Second), "cloud-outbox", site+"-controller")
+	if err != nil {
+		t.Fatalf("drain %s: %v", site, err)
+	}
+	batch, _ := cons.Fetch(1000, jetstream.FetchMaxWait(time.Second))
+	for msg := range batch.Messages() {
+		msg.DoubleAck(ctx(t, 5*time.Second))
+	}
+}
+
+// fakeDevice answers commands on site.to.device.<dev>.command and reports a
+// result as device.to.site.<dev>.result. Received ids go to the channel.
+func fakeDevice(t *testing.T, site, dev string) <-chan string {
+	t.Helper()
+	nc := device(t, site)
+	js, _ := jetstream.New(nc)
+	got := make(chan string, 100)
+	_, err := nc.Subscribe(siteToDevice(dev, "command"), func(m *nats.Msg) {
+		var c command
+		json.Unmarshal(m.Data, &c)
+		m.Respond([]byte("ok"))
+		res, _ := json.Marshal(map[string]string{"device": dev, "commandId": c.CommandID, "status": "done"})
+		js.Publish(context.Background(), deviceToSite(dev, "result"), res, jetstream.WithMsgID(c.CommandID+"-result"))
+		got <- c.CommandID
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nc.Flush()
+	return got
 }
 
 // streamLeader returns the hub node (= container name) leading a stream.
@@ -233,15 +343,6 @@ func streamLeader(t *testing.T, stream string) string {
 		t.Fatal(err)
 	}
 	return info.Cluster.Leader
-}
-
-func mustAPI(t *testing.T, nc *nats.Conn) jetstream.JetStream {
-	t.Helper()
-	js, err := jetstream.NewWithAPIPrefix(nc, cloudAPI)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return js
 }
 
 // waitForSite blocks until a restarted site server accepts connections.
@@ -276,4 +377,27 @@ func leafOut(t *testing.T, site string) (msgs, bytes int64) {
 		t.Fatalf("leafz: %v (%d leafs)", err, len(z.Leafs))
 	}
 	return z.Leafs[0].OutMsgs, z.Leafs[0].OutBytes
+}
+
+// expectDenied publishes (or subscribes) on a fresh connection and expects a
+// permissions violation.
+func expectDenied(t *testing.T, nc *nats.Conn, action, subj string) {
+	t.Helper()
+	errs := make(chan error, 4)
+	nc.SetErrorHandler(func(_ *nats.Conn, _ *nats.Subscription, err error) { errs <- err })
+	if action == "publish" {
+		nc.Publish(subj, []byte("x"))
+	} else {
+		sub, _ := nc.SubscribeSync(subj)
+		defer sub.Unsubscribe()
+	}
+	nc.Flush()
+	select {
+	case err := <-errs:
+		if !strings.Contains(err.Error(), "Permissions Violation") {
+			t.Fatalf("%s %s: unexpected error %v", action, subj, err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatalf("%s %s was allowed", action, subj)
+	}
 }

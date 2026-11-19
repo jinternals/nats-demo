@@ -1,12 +1,15 @@
 # Three cloud hub nodes, two sites, and a one-shot setup job.
-# Start with `make up` (generates dev certs and accounts first).
+# Start with `make up`: it generates dev certs and config/generated/ first.
+# Adding a site: add it to SITES in the Makefile, then copy the site1 service
+# and its network below, and update SITES for the setup service.
 name: nats-edge
 
 x-nats: &nats
   image: nats:2.12.5
   environment: &passwords
     CLOUD_APP_PASS: ${CLOUD_APP_PASS:-dev-cloud}
-    EDGE_APP_PASS: ${EDGE_APP_PASS:-dev-edge}
+    DEVICE_PASS: ${DEVICE_PASS:-dev-device}
+    SITE_CONTROLLER_PASS: ${SITE_CONTROLLER_PASS:-dev-controller}
     SITE_OPS_PASS: ${SITE_OPS_PASS:-dev-ops}
     SYS_PASS: ${SYS_PASS:-dev-sys}
 
@@ -44,7 +47,7 @@ services:
   site1:
     <<: *nats
     container_name: site1
-    command: ["-c", "/etc/nats/site1.conf"]
+    command: ["-c", "/etc/nats/generated/site1.conf"]
     volumes: [./config:/etc/nats:ro, ./certs:/certs:ro, site1:/data]
     networks: [wan, site1-lan]
     ports: ["4223:4222", "8223:8222"]   # client, monitoring
@@ -52,7 +55,7 @@ services:
   site2:
     <<: *nats
     container_name: site2
-    command: ["-c", "/etc/nats/site2.conf"]
+    command: ["-c", "/etc/nats/generated/site2.conf"]
     volumes: [./config:/etc/nats:ro, ./certs:/certs:ro, site2:/data]
     networks: [wan, site2-lan]
     ports: ["4224:4222", "8224:8222"]
@@ -60,7 +63,7 @@ services:
   setup:
     image: natsio/nats-box:0.19.5
     entrypoint: ["sh", "/scripts/setup.sh"]
-    environment: *passwords
+    environment: { <<: *passwords, SITES: "site1 site2" }
     volumes: [./config:/config:ro, ./certs:/certs:ro, ./scripts:/scripts:ro]
     networks: [cloud, wan]
     depends_on: [cloud-hub-1, cloud-hub-2, cloud-hub-3, site1, site2]

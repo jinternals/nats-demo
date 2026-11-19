@@ -24,15 +24,15 @@ what makes "acked at the site" mean "on the site's disk" (e2e
 ### A. NATS leaf node: the site's server dials the hub directly (chosen)
 
 ```
-edge app ─► site nats (site1-uplink) ══ leaf, mTLS, tls:// :7422 or wss:// :443 ══► cloud hub
-                                                     fleet-uplink ◄─ sources site1-uplink
-            site pulls own consumer  ◄────────────── fleet-commands
+edge app ─► site nats (site1-outbox) ══ leaf, mTLS, tls:// :7422 or wss:// :443 ══► cloud hub
+                                                     cloud-inbox ◄─ sources site1-outbox
+            site pulls own consumer  ◄────────────── cloud-outbox
 ```
 
 ### B. HTTP bridge: a service at each site relays to a cloud HTTP API
 
 ```
-edge app ─► site nats (site1-uplink) ─► site-bridge ── HTTPS ──► ingest API ─► cloud nats
+edge app ─► site nats (site1-outbox) ─► site-bridge ── HTTPS ──► ingest API ─► cloud nats
                                        site-bridge ◄─ HTTPS poll / long-poll ── command API ◄─ cloud nats
 ```
 
@@ -48,7 +48,7 @@ marked 4338c26, by the earlier scripts in that commit (nats-server 2.12.1) ·
 
 | Concern | A. Leaf node | B. HTTP bridge |
 |---|---|---|
-| **Uplink after an outage** | `fleet-uplink` sources each site stream and resumes from its last sequence. In order, no gaps, through a site `kill -9` mid-outage and the loss of the stream's leader node mid catch-up (**M**) | The bridge has to do it: read the site stream, batch, POST, retry with backoff, and save its position only after a 2xx. Ordering needs one batch in flight per site. That means re-implementing JetStream sourcing in your own code (**D**) |
+| **Uplink after an outage** | `cloud-inbox` sources each site stream and resumes from its last sequence. In order, no gaps, through a site `kill -9` mid-outage and the loss of the stream's leader node mid catch-up (**M**) | The bridge has to do it: read the site stream, batch, POST, retry with backoff, and save its position only after a 2xx. Ordering needs one batch in flight per site. That means re-implementing JetStream sourcing in your own code (**D**) |
 | **Duplicates** | Source replay is tracked by stream sequence; publishes carry `Nats-Msg-Id` (**M**/**S**) | Every retry of a batch whose response was lost is a duplicate. You need an idempotency key per message at ingest. Relying on JetStream dedupe would only cover retries inside `duplicate_window` (2 m here), not a retry after a long outage (**D**) |
 | **Commands: delivery** | The site pulls its durable consumer over the leaf. Delivered as soon as the link is back, with explicit ack (**M**) | Poll: latency up to the poll interval, plus empty requests from 500 sites. Long-poll/SSE/WebSocket: a custom streaming protocol with its own ack and redelivery rules (**D**) |
 | **Commands: expiry** | `Nats-TTL` deletes it in the cloud before it ships (**M**) | The command API must filter expired commands at fetch time; the edge `expiresAt` check stays either way (**D**) |

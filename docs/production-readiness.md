@@ -14,7 +14,7 @@ Evidence:
 
 | MQTT problem | Here | Evidence |
 |---|---|---|
-| Bridge session lost on reconnect, so queued commands were dropped (MQTT 5 session expiry) | **Gone.** Commands wait in `fleet-commands`; the durable consumer isn't tied to a connection | e2e `TestStaleCommandsExpireInCloud`, `TestHubLeaderLossDuringCatchUp` |
+| Bridge session lost on reconnect, so queued commands were dropped (MQTT 5 session expiry) | **Gone.** Commands wait in `cloud-outbox`; the durable consumer isn't tied to a connection | e2e `TestStaleCommandsExpireInCloud`, `TestHubLeaderLossDuringCatchUp` |
 | Outbound spool lost data (NanoMQ) | **Gone.** The site stream is the spool; the app's ack comes from site disk | e2e `TestUplinkSurvivesWANOutage`, `TestSiteServerCrashDuringOutage` |
 | Message expiry lost on the 3.1.1 hop | **Gone.** `Nats-TTL` deletes stale commands in the cloud | e2e `TestStaleCommandsExpireInCloud` |
 | WAN health via a bridge state topic | **Built in.** `$SYS.ACCOUNT.<site>.DISCONNECT` / `CONNECT` with the site's cert identity | e2e `TestSiteOfflineEvent` (disconnect seen after 61–74 s) |
@@ -35,7 +35,7 @@ Evidence:
 | After a hub node dies, short-lived (R1) consumers can fail to create for a few minutes | Cloud apps: use durable consumers, or retry with a short timeout | 4338c26: ~1 in 3 creates failed for ~3 min |
 | A cut can make the site resend events already written to the dead connection | Extra WAN traffic after an outage; the cloud stores each event once | e2e `TestUplinkCopiesEventByEvent` |
 | The uplink copy can't be rate-limited | It uses the link as fast as flow control allows | source `StreamSource`; see guide, *Delivery speed* |
-| Sites can't import the hub's API under `$JS.cloud.API` | Sites use `_fleet.api` | 4338c26 |
+| Sites can't import the hub's API under `$JS.cloud.API` | Sites use `_edge.api` | 4338c26 |
 | A site cert could join the hub cluster if routes used plain `verify` | Routes use `verify_cert_and_check_known_urls` | 4338c26: rejected 48 of 48 attempts |
 
 ## Done
@@ -43,11 +43,15 @@ Evidence:
 - 3-node hub cluster, every cloud stream replicated 3×. Losing the stream
   leader mid catch-up loses nothing (e2e `TestHubLeaderLossDuringCatchUp`).
 - One hub account per site (e2e `TestSitesAreIsolated`).
+- One naming convention ([naming.md](naming.md)), checked on every config
+  file (`TestNamingConvention`) and enforced per role
+  (`TestRolesUseOnlyTheirHop`). The cloud never sees device ids
+  (`TestForwardUpDeviceToCloud`).
 - Leaf over `wss://` through an HTTP proxy for HTTPS-only sites (4338c26).
 
 ## Still needed before production
 
-1. **Load test at fleet size:** hundreds of sources on `fleet-uplink`, and
+1. **Load test at fleet size:** hundreds of sources on `cloud-inbox`, and
    many sites reconnecting and catching up at once. Tested with 2 sites.
 2. **Power-cut test** on real site hardware, and the throughput cost of
    `sync_interval: always` there.
