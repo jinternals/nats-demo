@@ -1,6 +1,6 @@
 {
-  "durable_name": "site1-commands",
-  "filter_subject": "sites.site1.command.*.req",
+  "durable_name": "site2-commands",
+  "filter_subject": "fleet.site2.*.command",
   "deliver_policy": "all",
   "ack_policy": "explicit",
   "ack_wait": 30000000000,

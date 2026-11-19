@@ -1,6 +1,10 @@
 {
-  "name": "SITE2_UPLINK",
-  "subjects": ["sites.site2.telemetry.>", "sites.site2.health.>", "sites.site2.command.*.res"],
+  "name": "site2-uplink",
+  "subjects": [
+    "fleet.site2.*.telemetry",
+    "fleet.site2.*.health",
+    "fleet.site2.*.command.result"
+  ],
   "retention": "limits",
   "storage": "file",
   "num_replicas": 1,

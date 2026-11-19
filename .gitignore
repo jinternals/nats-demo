@@ -1,5 +1,2 @@
 certs/
-test/run/
-test/harness
-*.key
-__pycache__/
+config/hub-accounts.conf

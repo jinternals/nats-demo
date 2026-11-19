@@ -16,23 +16,23 @@
 - Some sites may only allow outbound HTTPS, possibly through a corporate proxy.
 
 Every site runs a local NATS server with JetStream either way. That local store is
-what makes "acked at the site" mean "on the site's disk" (measured:
-`scenario-crash.sh`). The decision is only about **the hop between the site and the cloud**.
+what makes "acked at the site" mean "on the site's disk" (e2e
+`TestSiteServerCrashDuringOutage`). The decision is only about **the hop between the site and the cloud**.
 
 ## Options
 
 ### A. NATS leaf node: the site's server dials the hub directly (chosen)
 
 ```
-edge-app ─► site nats (SITE_UPLINK) ══ leaf, mTLS, tls:// :7422 or wss:// :443 ══► cloud hub
-                                                     FLEET_UPLINK ◄─ sources SITE_UPLINK
-            site pulls own consumer  ◄────────────── FLEET_COMMANDS
+edge app ─► site nats (site1-uplink) ══ leaf, mTLS, tls:// :7422 or wss:// :443 ══► cloud hub
+                                                     fleet-uplink ◄─ sources site1-uplink
+            site pulls own consumer  ◄────────────── fleet-commands
 ```
 
 ### B. HTTP bridge: a service at each site relays to a cloud HTTP API
 
 ```
-edge-app ─► site nats (SITE_UPLINK) ─► site-bridge ── HTTPS ──► ingest API ─► cloud nats
+edge app ─► site nats (site1-uplink) ─► site-bridge ── HTTPS ──► ingest API ─► cloud nats
                                        site-bridge ◄─ HTTPS poll / long-poll ── command API ◄─ cloud nats
 ```
 
@@ -41,23 +41,24 @@ commands: by polling, long-polling, SSE or WebSocket.
 
 ## Comparison
 
-Evidence key: **M** measured in `test/` (nats-server 2.12.1, nats.go 1.46.1) ·
-**S** read from nats-server 2.12.1 source · **D** design reasoning (option B was
+Evidence key: **M** measured, by the `e2e/` tests (nats-server 2.12.5) or, where
+marked 4338c26, by the earlier scripts in that commit (nats-server 2.12.1) ·
+**S** read from the nats-server source · **D** design reasoning (option B was
 *not built or measured*).
 
 | Concern | A. Leaf node | B. HTTP bridge |
 |---|---|---|
-| **Uplink after an outage** | `FLEET_UPLINK` sources each site stream and resumes from its last sequence. 40/40 in order, 0 gaps, through a site `kill -9` and a hub `kill -9` mid-outage (**M**) | The bridge has to do it: read the site stream, batch, POST, retry with backoff, and save its position only after a 2xx. Ordering needs one batch in flight per site. That means re-implementing JetStream sourcing in your own code (**D**) |
+| **Uplink after an outage** | `fleet-uplink` sources each site stream and resumes from its last sequence. In order, no gaps, through a site `kill -9` mid-outage and the loss of the stream's leader node mid catch-up (**M**) | The bridge has to do it: read the site stream, batch, POST, retry with backoff, and save its position only after a 2xx. Ordering needs one batch in flight per site. That means re-implementing JetStream sourcing in your own code (**D**) |
 | **Duplicates** | Source replay is tracked by stream sequence; publishes carry `Nats-Msg-Id` (**M**/**S**) | Every retry of a batch whose response was lost is a duplicate. You need an idempotency key per message at ingest. Relying on JetStream dedupe would only cover retries inside `duplicate_window` (2 m here), not a retry after a long outage (**D**) |
 | **Commands: delivery** | The site pulls its durable consumer over the leaf. Delivered as soon as the link is back, with explicit ack (**M**) | Poll: latency up to the poll interval, plus empty requests from 500 sites. Long-poll/SSE/WebSocket: a custom streaming protocol with its own ack and redelivery rules (**D**) |
 | **Commands: expiry** | `Nats-TTL` deletes it in the cloud before it ships (**M**) | The command API must filter expired commands at fetch time; the edge `expiresAt` check stays either way (**D**) |
 | **Flow control / backpressure** | Built into sourcing (`$JS.FC`) (**S**) | HTTP 429/503 + `Retry-After`, and a bridge that honours them (**D**) |
 | **Per-site identity** | Client cert, `verify_and_map`: the cert subject is the user (**M**) | Client cert or token checked by the API, or by a gateway in front of it (**D**) |
 | **Per-site authorization** | One hub account per site, generated; only that site's stream, consumer and flow control cross the boundary. Cross-site pull refused, command injection denied, unknown cert rejected, full-rights `>` sniff on site1 saw 0 site2 messages (**M**) | Written in API code: every endpoint must check the path's site against the caller. One missed check is a cross-site hole (**D**) |
-| **HTTPS-only egress, corporate proxy** | Leaf over `wss://` through an HTTP CONNECT proxy, same cert and same site account. 20/20 uplink, command delivered, cross-site refused, unknown cert → `Authorization Violation` (**M**, `scenario-wss.sh`) | Native: plain HTTPS (**D**) |
+| **HTTPS-only egress, corporate proxy** | Leaf over `wss://` through an HTTP CONNECT proxy, same cert and same site account. 20/20 uplink, command delivered, cross-site refused, unknown cert → `Authorization Violation` (**M**, 4338c26) | Native: plain HTTPS (**D**) |
 | **TLS-inspecting proxy** (MITM, re-signs certificates) | Client-cert mTLS can't pass a proxy that terminates TLS, on either transport (**D**) | Same limit for client certs. Token auth survives inspection (**D**) |
 | **Silent failure modes** | Hub-side leaf denials are silent (`no responders`, no hub log line), and a mis-permissioned source stalls at 0 with no error (**M**). Monitor source last-seen and leaf DISCONNECT events | The bridge stalls (crash loop, stuck saved position, expired token) while the site keeps acking locally: the same "green dashboards" failure, inside your own code (**D**) |
-| **Site-offline signal** | `$SYS.ACCOUNT.SITEn.DISCONNECT` with the cert identity, ~1 min for a black-holed link with ping 20s/2 (**M**) | Heartbeat endpoint plus staleness timer (**D**) |
+| **Site-offline signal** | `$SYS.ACCOUNT.<site>.DISCONNECT` with the cert identity, 61–74 s for a silent link with ping 20s/2 (**M**) | Heartbeat endpoint plus staleness timer (**D**) |
 | **What you run and own** | nats-server at the site and in the cloud; config only (**M**) | Everything in A's site and cloud, **plus** a bridge service per site and an ingest + command API. Code you write, test, version and roll out to 500 sites (**D**) |
 | **Contract between site and cloud** | The subject namespace plus three stream/consumer names | An HTTP API: easier to version, document and put behind a gateway (**D**) |
 | **Operations tooling** | NATS-specific: `$SYS` events, `nats` CLI, stream info | Standard HTTP: load balancers, WAF, API gateway, access logs (**D**) |
@@ -98,12 +99,10 @@ Transport per site:
 
 ## Verification
 
-| Script | Covers |
+| Check | Where |
 |---|---|
-| `test/scenario.sh` | outage, uplink catch-up, TTL expiry, cross-site and injection denial |
-| `test/scenario-crash.sh` | site and hub `kill -9` mid-outage, leaf connect/disconnect events |
-| `test/scenario-wss.sh` | leaf over `wss://` through an HTTP CONNECT proxy, same identity and account |
-| `test/scenario-cluster.sh` | 3-node hub: stream leader killed mid catch-up, rogue route rejected |
+| outage, catch-up, TTL expiry, isolation, site crash, leader loss, per-event copy, offline events | `e2e/` (`make test`) |
+| leaf over `wss://` through an HTTP CONNECT proxy, rogue route rejected | commit 4338c26, `test/scenario-wss.sh`, `test/scenario-cluster.sh` |
 
 Found while testing the WebSocket path: in a leaf remote, the `proxy { }` block
 must come **after** `tls { }`. nats-server 2.12.1 validates it as it parses and

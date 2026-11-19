@@ -1,6 +1,6 @@
 {
-  "name": "FLEET_COMMANDS",
-  "subjects": ["sites.*.command.*.req"],
+  "name": "fleet-commands",
+  "subjects": ["fleet.*.*.command"],
   "retention": "workqueue",
   "storage": "file",
   "num_replicas": 3,
