@@ -46,28 +46,30 @@ inside the cloud; sites never talk to it.
 
 ```mermaid
 flowchart LR
-  subgraph site["Site (site1)"]
+  subgraph site["SITE (site1 LAN)"]
     dev["Device arm-01"]
     ctl["Site controller"]
     out[("site1 NATS<br/>site1-outbox")]
   end
 
-  subgraph hub["Cloud NATS Hub (3 nodes)"]
-    inbox[("cloud-inbox")]
-    outbox[("cloud-outbox")]
+  subgraph cloud["CLOUD (private VPC)"]
+    subgraph hub["Cloud NATS Hub (3 nodes)"]
+      inbox[("cloud-inbox")]
+      outbox[("cloud-outbox")]
+    end
+
+    br["nats-kafka bridge"]
+
+    subgraph kafka["Cloud Kafka"]
+      kcmd[("cloud.to.site.site1.command")]
+      kev[("site.to.cloud.telemetry<br/>site.to.cloud.health<br/>site.to.cloud.result")]
+    end
+
+    svc["Cloud services"]
   end
-
-  br["nats-kafka bridge"]
-
-  subgraph kafka["Cloud Kafka"]
-    kcmd[("cloud.to.site.site1.command")]
-    kev[("site.to.cloud.telemetry<br/>site.to.cloud.health<br/>site.to.cloud.result")]
-  end
-
-  svc["Cloud services"]
 
   dev -- "device.to.site.arm-01.telemetry" --> out
-  out == "site.to.cloud.site1.telemetry<br/>(stream source)" ==> inbox
+  out == "WAN Leaf: site.to.cloud.site1.telemetry<br/>(stream source)" ==> inbox
   inbox -- "JetStreamToKafka" --> br
   br -- "key: site1" --> kev
   kev --> svc
@@ -75,7 +77,7 @@ flowchart LR
   svc --> kcmd
   kcmd -- "KafkaToJetStream" --> br
   br -- "cloud.to.site.site1.command" --> outbox
-  outbox == "site1-controller<br/>(pull consumer)" ==> ctl
+  outbox == "WAN Leaf: site1-controller<br/>(pull consumer)" ==> ctl
   ctl -- "site.to.device.arm-01.command" --> dev
 ```
 

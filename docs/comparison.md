@@ -13,42 +13,53 @@ The difference is **where the NATS ↔ Kafka bridge runs**: in the cloud behind
 a Cloud NATS Hub (**Pattern A**), or at each site talking straight to Cloud
 Kafka (**Pattern B**).
 
-## Architecture side by side
+## Architecture side by side (Site vs Cloud boundary)
 
-### Pattern A — Cloud NATS Hub + Leaf Nodes ([`pattern-a-cloud-hub/`](../pattern-a-cloud-hub/README.md))
+### Pattern A — Bridge in the Cloud ([`pattern-a-cloud-hub/`](../pattern-a-cloud-hub/README.md))
 
 ```mermaid
 flowchart LR
-  subgraph site["Site (50–500x)"]
+  subgraph site["SITE (edge LAN, 50–500x)"]
     dev["Devices"] <--> sn[("Site NATS<br/>site-outbox")]
     ctl["Site controller"] <--> sn
   end
-  subgraph cloud["Cloud"]
+  subgraph cloud["CLOUD (private VPC)"]
     hub[("Cloud NATS Hub (3 nodes)<br/>cloud-inbox · cloud-outbox")]
-    br["nats-kafka"]
+    br["nats-kafka bridge"]
     kf[("Cloud Kafka")]
     svc["Cloud services"]
     hub <--> br <--> kf <--> svc
   end
-  sn <== "Leaf mTLS :7422<br/>or wss:// :443" ==> hub
+  sn <== "WAN: NATS Leaf<br/>mTLS :7422 or wss:// :443" ==> hub
 ```
 
-### Pattern B — Direct Site-to-Kafka ([`pattern-b-direct-kafka/`](../pattern-b-direct-kafka/README.md))
+### Pattern B — Bridge at the Site ([`pattern-b-direct-kafka/`](../pattern-b-direct-kafka/README.md))
 
 ```mermaid
 flowchart LR
-  subgraph site["Site (Nx)"]
+  subgraph site["SITE (edge LAN, Nx)"]
     dev["Devices"] <--> sn[("Site NATS<br/>site-outbox · site-inbox")]
     ctl["Site controller"] <--> sn
-    sn <--> br["Site nats-kafka"]
+    sn <--> br["nats-kafka bridge"]
   end
-  subgraph cloud["Cloud (no NATS hub)"]
+  subgraph cloud["CLOUD (VPC, no NATS hub)"]
     kf[("Cloud Kafka")]
     svc["Cloud services"]
     kf <--> svc
   end
-  br <== "Kafka TCP over WAN<br/>(TLS + SASL/mTLS)" ==> kf
+  br <== "WAN: Kafka TCP<br/>TLS + SASL/mTLS :9093" ==> kf
 ```
+
+## What runs where
+
+| Component | Pattern A | Pattern B |
+|---|---|---|
+| **Devices & Site controller** | Site | Site |
+| **Site NATS (`site-outbox`)** | Site | Site (`site-outbox` + `site-inbox`) |
+| **`nats-kafka` bridge** | **Cloud** (1 shared deployment) | **Site** (1 per site) |
+| **Cloud NATS Hub (3 nodes)** | **Cloud** | *(none)* |
+| **Cloud Kafka & Cloud services** | **Cloud** (private VPC) | **Cloud** (reachable from sites over WAN) |
+| **Protocol crossing the WAN** | **NATS Leaf** (`tls:// :7422` or `wss:// :443`) | **Kafka binary protocol** (`:9093`) |
 
 ## Head-to-head comparison
 

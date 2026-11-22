@@ -20,26 +20,26 @@ compares with [Pattern A (Cloud NATS Hub)](../pattern-a-cloud-hub/README.md).
 
 ```mermaid
 flowchart LR
-  subgraph site1["Site: site1"]
+  subgraph site1["SITE: site1 (edge LAN)"]
     d1["Devices"] <--> s1[("site1 NATS<br/>site1-outbox<br/>site1-inbox")]
     k1["Site controller"] <--> s1
     s1 <--> b1["site1-bridge<br/>(nats-kafka)"]
   end
 
-  subgraph site2["Site: site2"]
+  subgraph site2["SITE: site2 (edge LAN)"]
     d2["Devices"] <--> s2[("site2 NATS<br/>site2-outbox<br/>site2-inbox")]
     k2["Site controller"] <--> s2
     s2 <--> b2["site2-bridge<br/>(nats-kafka)"]
   end
 
-  subgraph cloud["Cloud (no NATS hub)"]
+  subgraph cloud["CLOUD (VPC, no NATS hub)"]
     kafka[("Cloud Kafka<br/>cloud.to.site.&lt;site&gt;.command<br/>site.to.cloud.&lt;type&gt;")]
     svc["Cloud services"]
     kafka <--> svc
   end
 
-  b1 <== "Kafka protocol over WAN<br/>(TLS + SASL/mTLS in prod)" ==> kafka
-  b2 <== "Kafka protocol over WAN" ==> kafka
+  b1 <== "WAN: Kafka protocol<br/>(TLS + SASL/mTLS :9093)" ==> kafka
+  b2 <== "WAN: Kafka protocol" ==> kafka
 ```
 
 ## Up: device → Cloud Kafka

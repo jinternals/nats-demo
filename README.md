@@ -14,20 +14,36 @@ Full side-by-side breakdown: **[docs/comparison.md](docs/comparison.md)** ·
 
 ---
 
-## Both patterns at a glance
+## Both patterns at a glance (Site vs Cloud boundary)
+
+### Pattern A — Bridge in the Cloud ([`pattern-a-cloud-hub/`](pattern-a-cloud-hub/README.md))
 
 ```mermaid
 flowchart LR
-  subgraph A["Pattern A: Cloud NATS Hub (pattern-a-cloud-hub/)"]
-    direction LR
-    as["Site NATS"] <== "Leaf mTLS / wss://" ==> ah[("Cloud NATS Hub")]
-    ah <--> ab["Cloud nats-kafka"] <--> ak[("Cloud Kafka")]
+  subgraph siteA["SITE (edge LAN)"]
+    dA["Devices &amp; Controller"] <--> sA[("Site NATS")]
   end
 
-  subgraph B["Pattern B: Direct Site-to-Kafka (pattern-b-direct-kafka/)"]
-    direction LR
-    bs["Site NATS"] <--> bb["Site nats-kafka"] <== "Kafka over WAN" ==> bk[("Cloud Kafka")]
+  subgraph cloudA["CLOUD (VPC)"]
+    hA[("Cloud NATS Hub (3 nodes)")] <--> bA["nats-kafka bridge"] <--> kA[("Cloud Kafka")] <--> svcA["Cloud services"]
   end
+
+  sA <== "WAN: NATS Leaf (mTLS :7422 / wss:// :443)" ==> hA
+```
+
+### Pattern B — Bridge at the Site ([`pattern-b-direct-kafka/`](pattern-b-direct-kafka/README.md))
+
+```mermaid
+flowchart LR
+  subgraph siteB["SITE (edge LAN)"]
+    dB["Devices &amp; Controller"] <--> sB[("Site NATS")] <--> bB["nats-kafka bridge"]
+  end
+
+  subgraph cloudB["CLOUD (VPC)"]
+    kB[("Cloud Kafka")] <--> svcB["Cloud services"]
+  end
+
+  bB <== "WAN: Kafka protocol (TLS + SASL/mTLS :9093)" ==> kB
 ```
 
 ---
