@@ -48,6 +48,21 @@ Evidence:
   (`TestRolesUseOnlyTheirHop`). The cloud never sees device ids
   (`TestForwardUpDeviceToCloud`).
 - Leaf over `wss://` through an HTTP proxy for HTTPS-only sites (4338c26).
+- Cloud services on Kafka, joined by the official `nats-io/nats-kafka` bridge
+  ([ADR-0002](adr/0002-kafka-nats-bridge.md)) with zero custom bridge code.
+  Command to device and result back, per-type up topics keyed by site, outage
+  catch-up in order, bridge `kill -9`, least-privilege NATS user, and topic
+  naming checks (e2e `TestKafka*`).
+
+## Kafka bridge (`nats-io/nats-kafka`): behaviours to plan for
+
+| Behaviour | Impact | Evidence |
+|---|---|---|
+| One Kafka command topic per site (`cloud.to.site.<site>.command`) | Adding a site adds a topic and a `KafkaToJetStream` connector (`scripts/generate.sh`); fine for 50–500 sites, revisit above ~1,000 | [ADR-0002](adr/0002-kafka-nats-bridge.md) |
+| At-least-once in both directions | Deduplicate commands on `Nats-Msg-Id` / `commandId` and events on `Nats-Msg-Id` / sequence | design |
+| `Nats-TTL` passes through unchanged (starts ticking at NATS ingest, not Kafka produce) | Include `expiresAt` in the command payload if commands might sit in Kafka while the bridge is down | design |
+| Kafka down: events back up in `cloud-inbox` | Size `cloud-inbox` `max_age` (7 d) / disk for the longest Kafka outage | design |
+| Bridge down: commands wait in Kafka, events wait in `cloud-inbox` | Both catch up after restart; alert on consumer group lag and `cloud-inbox` pending acks (`make kafka-status`, `/varz`) | e2e `TestKafkaBridgeCrashLosesNothing` |
 
 ## Still needed before production
 
@@ -56,8 +71,12 @@ Evidence:
 2. **Power-cut test** on real site hardware, and the throughput cost of
    `sync_interval: always` there.
 3. **Monitoring:** DISCONNECT events, per-source *last seen*, command queue
-   age, site stream fill.
+   age, site stream fill, `nats-kafka` `/healthz` & `/varz`, and bridge lag on
+   both Kafka and `cloud-inbox`.
 4. **Certificate lifecycle:** rotation, and revocation (OCSP or a CRL) on the
    leaf and WebSocket listeners.
 5. **Port the remaining 4338c26 checks to `e2e/`:** WebSocket through a
    proxy, rogue route, consumer creation after a node loss.
+6. **Kafka for real:** 3+ brokers, replication 3, `min.insync.replicas` 2,
+   SASL/mTLS (`tls` and `sasl` blocks in `nats-kafka.conf`) and ACLs (guide,
+   *Security*), plus a bridge throughput test at fleet event rate.

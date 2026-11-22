@@ -1,81 +1,87 @@
-# NATS edge-to-cloud demo
+# Cloud Kafka ↔ Site NATS: Architecture Patterns
 
-Devices at many sites send events to the cloud, and the cloud sends commands
-to sites. Each site runs its own NATS server, which connects out to a 3-node
-cloud cluster as a [leaf node](https://docs.nats.io/running-a-nats-service/configuration/leafnodes).
-Nothing is lost when a site's WAN link goes down: events wait on the site's
-disk, commands wait in the cloud.
+Two runnable, zero-custom-code patterns for connecting **Cloud services on
+Kafka** with **remote sites on NATS**, kept side by side so you can compare
+and choose the right fit.
+
+| Pattern | Directory | Topology | Best for |
+|---|---|---|---|
+| **Pattern A: Cloud NATS Hub + Leaf Nodes** | [pattern-a-cloud-hub/](pattern-a-cloud-hub/README.md) | Cloud Kafka ↔ Cloud `nats-kafka` ↔ Cloud NATS Hub (3 nodes) ══Leaf══ Site NATS | 50–500+ sites, restrictive firewalls (`wss:// :443`), keeping Kafka private in cloud VPC, minimal site footprint |
+| **Pattern B: Direct Site-to-Kafka** | [pattern-b-direct-kafka/](pattern-b-direct-kafka/README.md) | Cloud Kafka ══WAN══ Site `nats-kafka` ↔ Site NATS *(no Cloud NATS hub)* | Fewer sites on a private VPN to cloud VPC, avoiding a Cloud NATS cluster |
+
+Full side-by-side breakdown: **[docs/comparison.md](docs/comparison.md)** ·
+**[ADR-0003](docs/adr/0003-direct-site-to-kafka-vs-cloud-hub.md)**.
+
+---
+
+## Both patterns at a glance
 
 ```mermaid
 flowchart LR
-  subgraph site1["site1"]
-    d1["devices"] <--> s1[("site1 server<br/>site1-outbox")]
-    k1["site controller"] <--> s1
+  subgraph A["Pattern A: Cloud NATS Hub (pattern-a-cloud-hub/)"]
+    direction LR
+    as["Site NATS"] <== "Leaf mTLS / wss://" ==> ah[("Cloud NATS Hub")]
+    ah <--> ab["Cloud nats-kafka"] <--> ak[("Cloud Kafka")]
   end
-  subgraph site2["site2"]
-    d2["devices"] <--> s2[("site2 server<br/>site2-outbox")]
+
+  subgraph B["Pattern B: Direct Site-to-Kafka (pattern-b-direct-kafka/)"]
+    direction LR
+    bs["Site NATS"] <--> bb["Site nats-kafka"] <== "Kafka over WAN" ==> bk[("Cloud Kafka")]
   end
-  subgraph cloud["cloud: 3 hub nodes"]
-    hub[("cloud-inbox<br/>cloud-outbox")] <--> capp["cloud app"]
-  end
-  s1 <== "leaf over TLS, site dials out" ==> hub
-  s2 <== "leaf over TLS" ==> hub
 ```
 
-## Subjects
+---
 
-Every subject names its hop: `<from>.to.<to>.<id>.<type>`.
+## Quickstart
 
-| Hop | Subject | Example |
-|---|---|---|
-| Cloud → site | `cloud.to.site.<site>.<type>` | `cloud.to.site.site1.command` |
-| Site → cloud | `site.to.cloud.<site>.<type>` | `site.to.cloud.site1.telemetry` |
-| Site → device | `site.to.device.<device>.<type>` | `site.to.device.arm-01.command` |
-| Device → site | `device.to.site.<device>.<type>` | `device.to.site.arm-01.telemetry` |
+Both stacks need Docker, Make, and OpenSSL (Go 1.24+ is only needed to run
+Pattern A's `e2e/` test suite). Run one stack at a time so ports don't collide.
 
-The cloud never sees device ids. On the way up, the site forwards
-`device.to.site.<device>.<type>` as `site.to.cloud.<site>.<type>`. On the way
-down, a site controller decides which device runs a command. Full rules:
-[docs/naming.md](docs/naming.md).
-
-## Run it
-
-Needs Docker, Make, OpenSSL, and Go 1.24+ for the tests.
+### Run Pattern A (Cloud NATS Hub + Leaf)
 
 ```bash
-make up              # dev certs, generated config, 3 hubs, 2 sites, streams
-make test            # end-to-end tests: forwarding, naming, outages, crashes
-make down            # stop and delete all data
+cd pattern-a-cloud-hub
+make up            # Kafka, nats-kafka, 3-node NATS hub, 2 sites, streams & topics
+make kafka-status  # check bridge lag on Kafka and NATS
+make test          # full Go e2e suite (optional, needs Go 1.24+)
+make down
 ```
 
-Try an outage by hand:
+### Run Pattern B (Direct Site-to-Kafka)
 
 ```bash
-make cut-site1       # site1 loses its WAN link; its devices keep publishing
-make restore-site1   # site1's events catch up in the cloud
-make kill-cloud-hub-2 start-cloud-hub-2
-make status          # streams, leaders, replicas
+cd pattern-b-direct-kafka
+make up            # Kafka, 2 sites, per-site nats-kafka bridges
+make kafka-status  # check per-site Kafka consumer groups
+make status        # check site1/site2 JetStream streams
+make down
 ```
 
-| Connect as | Address | User (dev password) |
-|---|---|---|
-| Cloud app | `tls://localhost:4222`, `:4232`, `:4242`, CA `certs/ca.crt` | `cloud-app` (`dev-cloud`) |
-| Device | site1 `nats://localhost:4223`, site2 `:4224` | `device` (`dev-device`) |
-| Site controller | same as device | `site-controller` (`dev-controller`) |
-| Monitoring | hub1 `http://localhost:8222`, site1 `:8223`, site2 `:8224` | |
+---
 
-## Layout
+## Repository layout
 
-```
-compose.yaml          3 hubs, 2 sites, one-shot stream setup (nats-box)
-Makefile              up, down, test, cut/restore a site, kill/start a server
-config/hub.conf       hub node config
-config/streams/       cloud-outbox definition
-config/generated/     per-site config, made by scripts/generate.sh (not in git)
-scripts/              generate.sh, gen-certs.sh, setup.sh
-e2e/                  Go end-to-end tests, including the naming check
-docs/naming.md        naming convention
-docs/guide.md         how it works
-docs/adr/             why a leaf node rather than an HTTP bridge
-docs/production-readiness.md
+```text
+.
+├── README.md                          # this overview
+├── docs/
+│   ├── comparison.md                  # Pattern A vs Pattern B comparison & diagrams
+│   ├── naming.md                      # shared NATS subject & Kafka topic conventions
+│   ├── production-readiness.md        # production checklist & failure modes
+│   └── adr/
+│       ├── 0001-site-to-cloud-transport.md
+│       ├── 0002-kafka-nats-bridge.md
+│       └── 0003-direct-site-to-kafka-vs-cloud-hub.md
+├── pattern-a-cloud-hub/               # Pattern A: Cloud Kafka <-> Cloud NATS Hub <-> Site NATS
+│   ├── README.md                      # detailed guide, diagrams, operations & tests
+│   ├── Makefile
+│   ├── compose.yaml
+│   ├── config/
+│   ├── scripts/
+│   └── e2e/
+└── pattern-b-direct-kafka/            # Pattern B: Cloud Kafka <-> Site nats-kafka <-> Site NATS
+    ├── README.md                      # detailed guide, diagrams & operations
+    ├── Makefile
+    ├── compose.yaml
+    └── scripts/
 ```
