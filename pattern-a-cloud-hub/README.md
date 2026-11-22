@@ -134,7 +134,7 @@ sequenceDiagram
   participant K as Kafka
 
   D->>S: device.to.site.arm-01.telemetry
-  Note over S: site1-outbox transforms & stores as<br/>site.to.cloud.site1.telemetry
+  Note over S: site1-outbox stores it as site.to.cloud.site1.telemetry
   S-->>D: ack (fsynced to site1 disk)
   Note over S,H: If WAN is down, events wait in site1-outbox
   S->>H: copy over leaf (_edge.copy.site1.*)
@@ -183,13 +183,13 @@ sequenceDiagram
   B->>H: publish cloud.to.site.site1.command
   H-->>B: JetStream ack (stored in cloud-outbox)
   B->>KF: commit offset
-  Note over H: If WAN is down, command waits here;<br/>deleted automatically if Nats-TTL expires
+  Note over H: If WAN is down, command waits here (deleted if Nats-TTL expires)
   K->>H: pull (_edge.api.CONSUMER.MSG.NEXT.cloud-outbox.site1-controller)
   H-->>K: command
   K->>D: request on site.to.device.arm-01.command
   D-->>K: reply: ok
   K->>H: ack ($JS.ACK...), command deleted from workqueue
-  Note over D: result published as device.to.site.arm-01.result,<br/>flows up to Kafka site.to.cloud.result
+  Note over D: result published as device.to.site.arm-01.result, flows up to Kafka site.to.cloud.result
 ```
 
 - The cloud addresses a **site**, never a device. Choosing the device is the

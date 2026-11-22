@@ -52,7 +52,7 @@ sequenceDiagram
   participant K as Cloud Kafka
 
   D->>S: device.to.site.arm-01.telemetry
-  Note over S: subject transform stores as<br/>site.to.cloud.site1.telemetry
+  Note over S: subject transform stores as site.to.cloud.site1.telemetry
   S-->>D: ack (fsynced to site1 disk)
   Note over B,K: If WAN is down, events buffer in site1-outbox
   S->>B: JetStreamToKafka (durable kafka-bridge-site1-telemetry)
