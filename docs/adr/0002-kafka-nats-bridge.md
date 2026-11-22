@@ -71,7 +71,7 @@ Cloud services talk to the cloud NATS hub directly (as `cloud-app` does in
 |---|---|---|---|---|---|
 | Out-of-the-box, zero custom code | **yes** (official NATS image + generated config) | yes (YAML + Bloblang) | no (service to build & own) | partial (needs Connect cluster + SMTs) | n/a |
 | Single shared command topic routed by `siteId` header | **no** — uses one topic per site (`cloud.to.site.<site>.command`) | yes | yes | needs custom SMT | n/a |
-| Up: one topic per type, Kafka key = `<site>` | **yes** (`keytype: subjectre`) | yes | yes | depends on connector | n/a |
+| Up: one topic per type, Kafka key = `<site>` | **yes** (`keytype: fixed` per `(site, type)`) | yes | yes | depends on connector | n/a |
 | JetStream acks & durable consumers | **yes** (`KafkaToJetStream`, `JetStreamToKafka`) | yes | yes | many plugins use core NATS only | n/a |
 | Header pass-through (`Nats-Msg-Id`, `Nats-TTL`) | **yes** | yes (+ TTL math from Kafka timestamp) | yes (+ TTL math & `.rejected` DLQ) | depends on connector | publisher sets it |
 | Monitoring | built-in `/healthz`, `/varz` | Prometheus / HTTP | Actuator / custom | JMX | n/a |
@@ -106,8 +106,8 @@ connectors and `setup-kafka.sh` topics adds no new workflow).
 - **At-least-once delivery:** consumers should deduplicate on `Nats-Msg-Id` /
   `commandId`.
 - **Operations:** monitor `/healthz`, `/varz`, Kafka consumer group lag for
-  `kafka-bridge`, and pending acks on `cloud-inbox`'s `kafka-bridge-<type>`
-  consumers (`make kafka-status`).
+  `kafka-bridge`, and pending acks on `cloud-inbox`'s
+  `kafka-bridge-<site>-<type>` consumers (`make kafka-status`).
 
 ## When to revisit
 

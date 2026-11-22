@@ -128,7 +128,7 @@ sequenceDiagram
   Note over S,H: If WAN is down, events wait in site1-outbox
   S->>H: copy over leaf (_edge.copy.site1.*)
   H-->>S: flow control ($JS.FC.site1-outbox.*)
-  H->>B: JetStreamToKafka (durable kafka-bridge-telemetry)
+  H->>B: JetStreamToKafka (durable kafka-bridge-site1-telemetry)
   B->>K: site.to.cloud.telemetry (key: site1)
   K-->>B: ack
   B->>H: ack
@@ -144,10 +144,10 @@ sequenceDiagram
 3. `cloud-inbox` lists each site's outbox as a *source*. After an outage the
    copy resumes from the last event the cloud stored. Order per site is kept,
    and each event is stored once.
-4. `nats-kafka` reads `cloud-inbox` through durable consumers
-   (`kafka-bridge-telemetry`, `kafka-bridge-health`, `kafka-bridge-result`),
-   extracts `<site>` from the subject as the Kafka record key, and produces to
-   `site.to.cloud.<type>`. Cloud services consume from Kafka.
+4. `nats-kafka` reads `cloud-inbox` through per-`(site, type)` durable
+   consumers (`kafka-bridge-<site>-telemetry`, `kafka-bridge-<site>-health`,
+   `kafka-bridge-<site>-result`), sets the Kafka record key to `<site>`, and
+   produces to `site.to.cloud.<type>`. Cloud services consume from Kafka.
 
 The device id travels in the payload. The cloud doesn't need it in routing,
 but it's there if a service needs it.
@@ -200,7 +200,7 @@ partitions. This setup preserves per-site order in both directions:
 | Path | How order is kept | Caveat |
 |---|---|---|
 | **Up:** device → `<site>-outbox` → `cloud-inbox` | JetStream sequence order per site, even across WAN outages, site crashes, and hub leader failover. | — |
-| **Up:** `cloud-inbox` → `nats-kafka` → Kafka | `keytype: subjectre` sets Kafka key = `<site>`, routing all events for a site to **one partition** of `site.to.cloud.<type>`. | Ordered per `(site, type)` with **1 bridge instance per site**. Sharing one durable consumer across multiple bridge instances interleaves events. |
+| **Up:** `cloud-inbox` → `nats-kafka` → Kafka | Per-`(site, type)` connector with `keytype: fixed` sets Kafka key = `<site>`, routing all events for a site to **one partition** of `site.to.cloud.<type>`. | Ordered per `(site, type)` with **1 bridge instance per site**. Sharing one durable consumer across multiple bridge instances interleaves events. |
 | **Down:** Kafka → `nats-kafka` → `cloud-outbox` | Each `cloud.to.site.<site>.command` topic has **1 partition**, so commands for a site are always read in order. | — |
 | **Down:** `cloud-outbox` → site controller | Pulled in order on first delivery. | With `max_ack_pending: 100`, a failed/timed-out command redelivered after `ack_wait` (30 s) can arrive after later commands. Set `max_ack_pending: 1` if strict FIFO is required. |
 
@@ -318,8 +318,9 @@ Timing to expect:
 - `<site>-outbox`: disk usage against `max_bytes`.
 - `kafka-bridge` (`make kafka-status` and `http://localhost:8225/varz`):
   Kafka consumer-group lag for `kafka-bridge` on `cloud.to.site.<site>.command`,
-  and pending/ack-pending on `cloud-inbox` consumers (`kafka-bridge-telemetry`,
-  `kafka-bridge-health`, `kafka-bridge-result`).
+  and pending/ack-pending on `cloud-inbox` consumers
+  (`kafka-bridge-<site>-telemetry`, `kafka-bridge-<site>-health`,
+  `kafka-bridge-<site>-result`).
 
 **Silent failures to know about.** A request outside a site's account gets
 `no responders`, and nothing is logged on the hub. A missing import or export

@@ -5,7 +5,7 @@ Can this design replace the MQTT bridge design in
 that design had to work around is checked against this one.
 
 Evidence:
-- **e2e**: a test in `e2e/`, run against `make up` (nats-server 2.12.5).
+- **e2e**: a test in `pattern-a-cloud-hub/e2e/`, run against `make up` (nats-server 2.12.5).
 - **4338c26**: measured with the earlier test scripts in commit `4338c26`
   (`test/scenario*.sh`, nats-server 2.12.1). Not yet ported to `e2e/`.
 - **source**: read in the nats-server source.

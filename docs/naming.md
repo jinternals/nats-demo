@@ -1,9 +1,11 @@
 # Naming
 
 One rule set for everything that has a name. `TestNamingConvention`
-([e2e/naming_test.go](../e2e/naming_test.go)) checks every subject, stream and
-consumer name in `config/` against it; `TestKafkaTopicNames`
-([e2e/kafka_test.go](../e2e/kafka_test.go)) checks every Kafka topic.
+([pattern-a-cloud-hub/e2e/naming_test.go](../pattern-a-cloud-hub/e2e/naming_test.go))
+checks every subject, stream and consumer name in `config/` against it;
+`TestKafkaTopicNames`
+([pattern-a-cloud-hub/e2e/kafka_test.go](../pattern-a-cloud-hub/e2e/kafka_test.go))
+checks every Kafka topic.
 
 ## The model
 
@@ -155,7 +157,7 @@ header starting with `Nats-`; NATS reserves that prefix.
 | Kind | Pattern | Names |
 |---|---|---|
 | Stream | `<place>-inbox` / `<place>-outbox`, named from where it lives | `site1-outbox`, `cloud-inbox`, `cloud-outbox` |
-| Consumer | `<reader>-<role>` | `site1-controller` (on `cloud-outbox`), `kafka-bridge-<type>` (created by `nats-kafka` on `cloud-inbox`) |
+| Consumer | `<reader>-<role>` | `site1-controller` (on `cloud-outbox` or `<site>-inbox`), `kafka-bridge-<site>-<type>` (created by `nats-kafka`) |
 
 | Stream | Lives in | Holds |
 |---|---|---|
