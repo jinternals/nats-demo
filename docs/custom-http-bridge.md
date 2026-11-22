@@ -68,7 +68,7 @@ sequenceDiagram
 
   C->>K: cloud.to.site.site1.command
   K->>API: consume & store pending command (with expiresAt)
-  Note over HB,API: Cloud cannot dial into NAT site; site must poll or hold SSE/WS
+  Note over HB,API: Cloud cannot dial into NAT site, so site polls or holds SSE/WS
   HB->>API: HTTPS GET /v1/sites/site1/commands (long-poll / SSE / WS)
   API-->>HB: command (filtered by expiresAt)
   HB->>CTL: forward command on site NATS
