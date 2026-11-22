@@ -11,7 +11,8 @@ directories so you can compare and choose the right fit.
 | **Pattern C: Cloud Bridge → Site NATS** | [pattern-c-cloud-bridge-direct/](pattern-c-cloud-bridge-direct/README.md) | **Cloud** (1 per site) | No | Cloud dials **in** (NATS `:4222` over VPN) | Private site-to-cloud VPN, Kafka private in VPC, minimal site ops, no Cloud NATS hub |
 
 Full comparison: **[docs/comparison.md](docs/comparison.md)** ·
-**[ADR-0003](docs/adr/0003-direct-site-to-kafka-vs-cloud-hub.md)**.
+**[ADR-0003](docs/adr/0003-direct-site-to-kafka-vs-cloud-hub.md)** ·
+**[Interactive Animated Explorer (`docs/index.html`)](docs/index.html)** *(open in any browser)*.
 
 ---
 
@@ -83,6 +84,7 @@ cd pattern-c-cloud-bridge-direct && make up  # make status · make kafka-status 
 .
 ├── README.md                          # overview of Patterns A, B, and C
 ├── docs/
+│   ├── index.html                     # interactive animated explorer (open in browser / GitHub Pages)
 │   ├── comparison.md                  # Pattern A vs B vs C vs Custom HTTP Bridge
 │   ├── custom-http-bridge.md          # deep-dive: building your own HTTP bridge
 │   ├── load-test-2mbps.md             # 2 Mbps WAN load test results (Pattern A)
