@@ -46,39 +46,26 @@ inside the cloud; sites never talk to it.
 
 ```mermaid
 flowchart LR
-  subgraph site["SITE (site1 LAN)"]
-    dev["Device arm-01"]
-    ctl["Site controller"]
-    out[("site1 NATS<br/>site1-outbox")]
+  subgraph site1["SITE: site1 (edge LAN)"]
+    d1["Devices"] <--> s1[("site1 NATS<br/>site1-outbox")]
+    k1["Site controller"] <--> s1
+  end
+
+  subgraph site2["SITE: site2 (edge LAN)"]
+    d2["Devices"] <--> s2[("site2 NATS<br/>site2-outbox")]
+    k2["Site controller"] <--> s2
   end
 
   subgraph cloud["CLOUD (private VPC)"]
-    subgraph hub["Cloud NATS Hub (3 nodes)"]
-      inbox[("cloud-inbox")]
-      outbox[("cloud-outbox")]
-    end
-
+    hub[("Cloud NATS Hub (3 nodes)<br/>cloud-inbox · cloud-outbox")]
     br["nats-kafka bridge"]
-
-    subgraph kafka["Cloud Kafka"]
-      kcmd[("cloud.to.site.site1.command")]
-      kev[("site.to.cloud.telemetry<br/>site.to.cloud.health<br/>site.to.cloud.result")]
-    end
-
+    kafka[("Cloud Kafka<br/>cloud.to.site.&lt;site&gt;.command<br/>site.to.cloud.&lt;type&gt;")]
     svc["Cloud services"]
+    hub <--> br <--> kafka <--> svc
   end
 
-  dev -- "device.to.site.arm-01.telemetry" --> out
-  out == "WAN Leaf: site.to.cloud.site1.telemetry<br/>(stream source)" ==> inbox
-  inbox -- "JetStreamToKafka" --> br
-  br -- "key: site1" --> kev
-  kev --> svc
-
-  svc --> kcmd
-  kcmd -- "KafkaToJetStream" --> br
-  br -- "cloud.to.site.site1.command" --> outbox
-  outbox == "WAN Leaf: site1-controller<br/>(pull consumer)" ==> ctl
-  ctl -- "site.to.device.arm-01.command" --> dev
+  s1 <== "WAN: Site dials out<br/>NATS Leaf mTLS :7422 / wss:// :443" ==> hub
+  s2 <== "WAN: Site dials out<br/>NATS Leaf mTLS :7422" ==> hub
 ```
 
 ## Kafka ↔ NATS bridge (`nats-io/nats-kafka`)

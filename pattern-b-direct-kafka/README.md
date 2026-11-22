@@ -38,8 +38,8 @@ flowchart LR
     kafka <--> svc
   end
 
-  b1 <== "WAN: Kafka protocol<br/>(TLS + SASL/mTLS :9093)" ==> kafka
-  b2 <== "WAN: Kafka protocol" ==> kafka
+  b1 <== "WAN: Site dials out<br/>Kafka TLS + SASL/mTLS :9093" ==> kafka
+  b2 <== "WAN: Site dials out<br/>Kafka TLS + SASL/mTLS :9093" ==> kafka
 ```
 
 ## Up: device → Cloud Kafka

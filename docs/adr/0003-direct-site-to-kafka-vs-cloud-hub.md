@@ -1,10 +1,9 @@
-# ADR-0003: Pattern A (Cloud NATS Hub + Leaf) vs Pattern B (Direct Site-to-Kafka)
+# ADR-0003: Pattern A (Cloud NATS Hub) vs Pattern B (Site Bridge) vs Pattern C (Cloud Bridge → Site NATS)
 
-- **Status:** proposed (both patterns kept runnable for evaluation)
+- **Status:** proposed (all three patterns kept runnable for evaluation)
 - **Date:** 2026-11-23
-- **Scope:** whether remote sites connect to a Cloud NATS hub over leaf nodes
-  (Pattern A) or run `nats-kafka` locally to connect straight to Cloud Kafka
-  over WAN (Pattern B).
+- **Scope:** where the `nats-kafka` bridge runs and whether a Cloud NATS Hub
+  sits between sites and Cloud Kafka.
 
 ## Context
 
@@ -20,48 +19,66 @@ The decision is **where the NATS ↔ Kafka boundary sits**: in the cloud
 
 ## Options
 
-### Pattern A: Cloud NATS Hub + Leaf Nodes (`pattern-a-cloud-hub/`)
+### Pattern A: Cloud NATS Hub + Cloud Bridge (`pattern-a-cloud-hub/`)
 
 ```mermaid
 flowchart LR
-  dev["Site devices"] <--> sn[("Site NATS")]
-  sn <== "NATS Leaf (mTLS :7422 or wss:// :443)" ==> hub[("Cloud NATS Hub (3 nodes)")]
-  hub <--> br["Cloud nats-kafka"] <--> kf[("Cloud Kafka")] <--> svc["Cloud services"]
+  subgraph siteA["SITE (edge LAN)"]
+    dA["Devices &amp; Controller"] <--> sA[("Site NATS<br/>site-outbox")]
+  end
+  subgraph cloudA["CLOUD (private VPC)"]
+    hA[("Cloud NATS Hub (3 nodes)<br/>cloud-inbox · cloud-outbox")] <--> bA["nats-kafka bridge"] <--> kA[("Cloud Kafka")] <--> svcA["Cloud services"]
+  end
+  sA <== "WAN: Site dials out<br/>NATS Leaf mTLS :7422 / wss:// :443" ==> hA
 ```
 
-### Pattern B: Direct Site-to-Kafka (`pattern-b-direct-kafka/`)
+### Pattern B: Site Bridge → Cloud Kafka (`pattern-b-direct-kafka/`)
 
 ```mermaid
 flowchart LR
-  dev["Site devices"] <--> sn[("Site NATS")] <--> br["Site nats-kafka"]
-  br <== "Kafka protocol over WAN (TLS + SASL/mTLS)" ==> kf[("Cloud Kafka")] <--> svc["Cloud services"]
+  subgraph siteB["SITE (edge LAN)"]
+    dB["Devices &amp; Controller"] <--> sB[("Site NATS<br/>site-outbox · site-inbox")] <--> bB["nats-kafka bridge"]
+  end
+  subgraph cloudB["CLOUD (VPC, no NATS hub)"]
+    kB[("Cloud Kafka")] <--> svcB["Cloud services"]
+  end
+  bB <== "WAN: Site dials out<br/>Kafka TLS + SASL/mTLS :9093" ==> kB
+```
+
+### Pattern C: Cloud Bridge → Site NATS (`pattern-c-cloud-bridge-direct/`)
+
+```mermaid
+flowchart LR
+  subgraph siteC["SITE (edge LAN)"]
+    dC["Devices &amp; Controller"] <--> sC[("Site NATS<br/>site-outbox · site-inbox")]
+  end
+  subgraph cloudC["CLOUD (private VPC, no NATS hub)"]
+    bC["nats-kafka bridge<br/>(1 per site)"] <--> kC[("Cloud Kafka")] <--> svcC["Cloud services"]
+  end
+  sC <== "WAN / VPN: Cloud dials site<br/>NATS client TLS :4222" ==> bC
 ```
 
 ## Comparison
 
-| Concern | Pattern A: Cloud NATS Hub (`pattern-a-cloud-hub/`) | Pattern B: Direct Site-to-Kafka (`pattern-b-direct-kafka/`) |
-|---|---|---|
-| **Cloud components to operate** | Cloud Kafka + 3-node Cloud NATS hub + 1 Cloud `nats-kafka` | Cloud Kafka only (no Cloud NATS cluster) |
-| **Site components to operate** | Site NATS only (1 binary, config only) | Site NATS + Site `nats-kafka` (2 containers per site to upgrade & monitor) |
-| **WAN transport & firewalls** | Single outbound TCP `:7422` or **`wss:// :443`** through corporate HTTPS proxies | Direct Kafka TCP (`:9093`) to **every broker** (bootstrap + advertised broker addresses); does not traverse HTTP proxies |
-| **Kafka exposure** | Kafka stays **strictly private** inside the cloud VPC | Kafka brokers (or a Kafka proxy like Kroxylicious/Envoy) must be reachable from every site over WAN |
-| **Per-site security & isolation** | Per-site mTLS cert → isolated NATS hub account; hub enforces zero cross-site visibility | Per-site Kafka mTLS/SASL credentials + Kafka ACLs on every broker |
-| **Site-offline detection** | Built-in `$SYS.ACCOUNT.<site>.DISCONNECT` / `CONNECT` (~60–75 s) | No built-in disconnect event; rely on heartbeats or Kafka consumer-group liveness |
-| **Stale command expiry** | `Nats-TTL` deletes expired commands in `cloud-outbox` before they ever cross the WAN | Commands wait in Kafka until site reconnects; site controller must drop expired commands via payload `expiresAt` |
-| **Kafka outage resilience** | `cloud-inbox` buffers 7 days in the cloud; sites stay connected to the hub | Events stay buffered in each site's `<site>-outbox` until Cloud Kafka returns |
-| **Fleet scaling (50–500 sites)** | Hub manages 50–500 leaf connections (designed for this); Kafka only sees 1 cloud bridge | Kafka brokers hold direct WAN TCP connections + consumer group members from 50–500 sites |
+See [docs/comparison.md](../comparison.md) for the full side-by-side matrix of
+all three patterns.
 
 ## When to choose which
 
 - **Choose Pattern A (`pattern-a-cloud-hub/`)** when:
-  - Sites sit behind restrictive firewalls or HTTPS-only proxies (`wss:// :443`).
-  - Security policy forbids exposing Cloud Kafka brokers to remote sites.
+  - Sites sit behind NAT, restrictive firewalls, or HTTPS-only proxies (`wss:// :443`).
+  - Cloud Kafka must stay strictly private inside the cloud VPC.
   - You want minimal site footprint (only `nats-server`), built-in site offline
     events (`$SYS`), and cloud-side command TTL expiry before WAN transfer.
   - You expect 50–500+ sites.
 - **Choose Pattern B (`pattern-b-direct-kafka/`)** when:
-  - You have a small number of sites with VPN/private WAN directly to the
-    cloud VPC (so Kafka broker connectivity is already private and reliable).
-  - You want to avoid operating a 3-node Cloud NATS cluster.
-  - Sites can comfortably run and upgrade a second container (`nats-kafka`)
-    and handle command expiry in the site controller.
+  - Sites must dial **out** (no inbound VPN from cloud), you have a small
+    number of sites, and you want to avoid running a Cloud NATS cluster.
+  - Exposing Kafka (with TLS + SASL/mTLS + ACLs) over WAN/VPN is acceptable.
+- **Choose Pattern C (`pattern-c-cloud-bridge-direct/`)** when:
+  - You already have a private site-to-cloud VPN where the cloud VPC can dial
+    into each site's NATS `:4222` over TLS.
+  - You want **minimal site footprint** (only `nats-server` at sites),
+    **private Cloud Kafka**, and **no Cloud NATS Hub** — and running 1
+    lightweight `nats-kafka` container per site in the cloud fits your fleet
+    size.

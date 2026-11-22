@@ -1,0 +1,126 @@
+# Pattern C: Cloud Bridge -> Site NATS (no Cloud NATS hub).
+# Cloud (private VPC): Kafka + kafka-setup + per-site nats-kafka bridges (site1-bridge, site2-bridge).
+#   Kafka stays strictly on the private `cloud` network; sites never connect to Kafka.
+# Sites (edge LAN): each site runs ONLY its local NATS server (<site>-outbox, <site>-inbox),
+#   reachable from the cloud bridges over `wan` (private VPN / site-to-site tunnel in prod).
+# Start with `make up`.
+name: nats-cloud-bridge
+
+x-nats: &nats
+  image: nats:2.12.5
+  environment: &passwords
+    KAFKA_BRIDGE_PASS: ${KAFKA_BRIDGE_PASS:-dev-bridge}
+    DEVICE_PASS: ${DEVICE_PASS:-dev-device}
+    SITE_CONTROLLER_PASS: ${SITE_CONTROLLER_PASS:-dev-controller}
+    SITE_OPS_PASS: ${SITE_OPS_PASS:-dev-ops}
+    SYS_PASS: ${SYS_PASS:-dev-sys}
+
+services:
+  # Cloud Kafka: private to the `cloud` network only. Sites never reach it.
+  kafka:
+    image: apache/kafka:3.9.1
+    container_name: c-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes: [kafka:/var/lib/kafka/data]
+    networks:
+      cloud: { aliases: [kafka] }
+    ports: ["9094:9094"]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+
+  kafka-setup:
+    image: apache/kafka:3.9.1
+    entrypoint: ["sh", "/scripts/setup-kafka.sh"]
+    environment:
+      KAFKA_BROKERS: kafka:9092
+      SITES: "site1 site2"
+      UP_TYPES: "telemetry health result"
+      COMMAND_PARTITIONS: 1
+      UP_PARTITIONS: 6
+      TOPIC_REPLICATION: 1
+    volumes: [./scripts:/scripts:ro]
+    networks: [cloud]
+    depends_on:
+      kafka: { condition: service_healthy }
+
+  # Cloud-side per-site bridges: talk to Cloud Kafka on `cloud` and dial site NATS over `wan` (VPN).
+  site1-bridge:
+    image: natsio/nats-kafka:1.4.2
+    container_name: c-site1-bridge
+    restart: unless-stopped
+    command: ["-c", "/etc/nats-kafka/site1-nats-kafka.conf"]
+    volumes: [./config/generated/bridge:/etc/nats-kafka:ro]
+    networks: [cloud, wan]
+    ports: ["8225:8222"]
+    depends_on:
+      kafka-setup: { condition: service_completed_successfully }
+      setup: { condition: service_completed_successfully }
+
+  site2-bridge:
+    image: natsio/nats-kafka:1.4.2
+    container_name: c-site2-bridge
+    restart: unless-stopped
+    command: ["-c", "/etc/nats-kafka/site2-nats-kafka.conf"]
+    volumes: [./config/generated/bridge:/etc/nats-kafka:ro]
+    networks: [cloud, wan]
+    ports: ["8226:8222"]
+    depends_on:
+      kafka-setup: { condition: service_completed_successfully }
+      setup: { condition: service_completed_successfully }
+
+  # Sites: ONLY NATS runs at each site. Reachable by cloud bridges over `wan` (VPN).
+  site1:
+    <<: *nats
+    container_name: c-site1
+    command: ["-c", "/etc/nats/generated/site1.conf"]
+    volumes: [./config:/etc/nats:ro, site1:/data]
+    networks:
+      site1-lan: { aliases: [site1] }
+      wan: { aliases: [site1] }
+    ports: ["4223:4222", "8223:8222"]
+
+  site2:
+    <<: *nats
+    container_name: c-site2
+    command: ["-c", "/etc/nats/generated/site2.conf"]
+    volumes: [./config:/etc/nats:ro, site2:/data]
+    networks:
+      site2-lan: { aliases: [site2] }
+      wan: { aliases: [site2] }
+    ports: ["4224:4222", "8224:8222"]
+
+  setup:
+    image: natsio/nats-box:0.19.5
+    entrypoint: ["sh", "/scripts/setup.sh"]
+    environment: { <<: *passwords, SITES: "site1 site2" }
+    volumes: [./config:/config:ro, ./scripts:/scripts:ro]
+    networks: [site1-lan, site2-lan]
+    depends_on: [site1, site2]
+
+networks:
+  cloud: { name: nats-c-cloud }
+  wan: { name: nats-c-wan }
+  site1-lan: { name: nats-c-site1-lan }
+  site2-lan: { name: nats-c-site2-lan }
+
+volumes:
+  kafka:
+  site1:
+  site2:
