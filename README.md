@@ -83,7 +83,8 @@ cd pattern-c-cloud-bridge-direct && make up  # make status · make kafka-status 
 .
 ├── README.md                          # overview of Patterns A, B, and C
 ├── docs/
-│   ├── comparison.md                  # Pattern A vs B vs C comparison & diagrams
+│   ├── comparison.md                  # Pattern A vs B vs C vs Custom HTTP Bridge
+│   ├── custom-http-bridge.md          # deep-dive: building your own HTTP bridge
 │   ├── load-test-2mbps.md             # 2 Mbps WAN load test results (Pattern A)
 │   ├── naming.md                      # shared NATS subject & Kafka topic conventions
 │   ├── production-readiness.md        # production checklist & failure modes

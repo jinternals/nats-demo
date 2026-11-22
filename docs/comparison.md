@@ -66,7 +66,7 @@ flowchart LR
   sn <== "WAN / VPN: Cloud dials site<br/>NATS client TLS :4222" ==> br
 ```
 
-### Reference — Custom HTTP Bridge (not built here; see [ADR-0001](adr/0001-site-to-cloud-transport.md))
+### Reference — Custom HTTP Bridge (not built here; see [custom-http-bridge.md](custom-http-bridge.md) & [ADR-0001](adr/0001-site-to-cloud-transport.md))
 
 ```mermaid
 flowchart LR
