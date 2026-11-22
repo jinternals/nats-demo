@@ -66,6 +66,7 @@ make down
 ├── README.md                          # this overview
 ├── docs/
 │   ├── comparison.md                  # Pattern A vs Pattern B comparison & diagrams
+│   ├── load-test-2mbps.md             # 2 Mbps WAN load test results (Pattern A)
 │   ├── naming.md                      # shared NATS subject & Kafka topic conventions
 │   ├── production-readiness.md        # production checklist & failure modes
 │   └── adr/

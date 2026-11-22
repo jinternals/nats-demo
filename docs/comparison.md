@@ -62,7 +62,7 @@ flowchart LR
 | **Per-site isolation** | Per-site mTLS cert → isolated NATS hub account | Per-site Kafka mTLS/SASL credentials + Kafka ACLs |
 | **Site-offline detection** | Built-in `$SYS.ACCOUNT.<site>.DISCONNECT` (~60–75 s) | Must build heartbeats or monitor Kafka group membership |
 | **Stale command expiry** | `Nats-TTL` deletes expired commands in `cloud-outbox` before WAN transfer | Commands wait in Kafka; site controller must check `expiresAt` in payload |
-| **2 Mbps WAN uplink (measured)** | ~400 msg/s (512 B), 1.64 Mbps effective, 0 loss, 1.4 s command latency during saturation | Similar wire ceiling; Kafka batching can slightly reduce framing overhead |
+| **2 Mbps WAN uplink (measured)** | ~400 msg/s (512 B), 1.64 Mbps effective, 0 loss, 1.4 s command latency during saturation ([full report](load-test-2mbps.md)) | Similar wire ceiling; Kafka batching can slightly reduce framing overhead |
 | **Best fit** | 50–500+ sites, restrictive firewalls, strict VPC isolation, minimal site ops | Small site count on private VPN to cloud VPC, want to avoid running Cloud NATS |
 
 For the full decision record, see
