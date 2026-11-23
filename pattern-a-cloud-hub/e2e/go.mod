@@ -1,4 +1,4 @@
-module github.com/jinternals/nats-demo/e2e
+module github.com/jinternals/nats-kafka-communication-patterns/pattern-a-cloud-hub/e2e
 
 go 1.24.0
 
