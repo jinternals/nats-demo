@@ -16,24 +16,28 @@ cloud NATS hub.
 
 ```mermaid
 flowchart LR
-  svc["Cloud services"]
-  kf["Kafka"]
-  br["nats-kafka"]
-  hub["Cloud NATS"]
-  site["Site NATS"]
-  dev["Device"]
+  subgraph siteBox["SITE (edge LAN)"]
+    dev["Device"]
+    site[("Site NATS")]
+    dev -- "device.to.site.&lt;device&gt;.&lt;type&gt;" --> site
+    site -- "site.to.device.&lt;device&gt;.command" --> dev
+  end
 
-  svc -- "cloud.to.site.&lt;site&gt;.command" --> kf
-  kf --> br
-  br -- "cloud.to.site.&lt;site&gt;.command" --> hub
-  hub --> site
-  site -- "site.to.device.&lt;device&gt;.command" --> dev
+  subgraph cloudBox["CLOUD (private VPC)"]
+    hub[("Cloud NATS")]
+    br["nats-kafka"]
+    kf[("Cloud Kafka")]
+    svc["Cloud services"]
+    hub --> br
+    br -- "site.to.cloud.&lt;type&gt; (key: &lt;site&gt;)" --> kf
+    kf --> svc
+    svc -- "cloud.to.site.&lt;site&gt;.command" --> kf
+    kf --> br
+    br -- "cloud.to.site.&lt;site&gt;.command" --> hub
+  end
 
-  dev -- "device.to.site.&lt;device&gt;.&lt;type&gt;" --> site
-  site -- "site.to.cloud.&lt;site&gt;.&lt;type&gt;" --> hub
-  hub --> br
-  br -- "site.to.cloud.&lt;type&gt; (key: &lt;site&gt;)" --> kf
-  kf --> svc
+  site == "WAN: site.to.cloud.&lt;site&gt;.&lt;type&gt;" ==> hub
+  hub == "WAN: cloud.to.site.&lt;site&gt;.command" ==> site
 ```
 
 ## NATS subjects: `<from>.to.<to>.<id>.<type>`
