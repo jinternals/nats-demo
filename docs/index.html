@@ -10,7 +10,7 @@
     --bg-panel: #0f1629;
     --bg-card: #151f38;
     --border: #233256;
-    --border-hi: #3c5694;
+    --border-hi: #3f5c9e;
     --text: #e6edf8;
     --muted: #93a5c8;
     --site: #10b981;
@@ -45,6 +45,7 @@
   body.light .node-box.broker { fill: #eef2ff; stroke: #6366f1; }
   body.light .node-box.site-broker { fill: #ecfdf5; stroke: #10b981; }
   body.light .node-box.bridge { fill: #f5f3ff; stroke: #7c3aed; }
+  body.light .node-box.crashed { fill: #fef2f2; stroke: #dc2626; }
   body.light .node-title { fill: #0f172a; }
   body.light .node-sub { fill: #475569; }
   body.light .wan-pill-bg { fill: #fffbeb; stroke: #d97706; }
@@ -55,251 +56,246 @@
   body.light .q-badge-txt { fill: #334155; }
   body.light .q-badge-bg.has-items { fill: #fef3c7; stroke: #d97706; }
   body.light .q-badge-txt.has-items { fill: #92400e; }
-  body.light .trace-subj { color: #0f172a; }
-  body.light .verdict-box { color: #1e293b; background: rgba(99, 102, 241, 0.08); }
   body.light .edge-line { stroke: #94a3b8; }
   body.light .seq-lbl-bg { fill: #ffffff; }
+  body.light .code-box { background: #eef2f9; color: #0f172a; }
+  body.light .verdict-box { color: #1e293b; background: rgba(99, 102, 241, 0.08); }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    line-height: 1.5;
-    min-height: 100vh;
-  }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.5; min-height: 100vh; }
 
   header {
     border-bottom: 1px solid var(--border);
     background: rgba(15, 22, 41, 0.92);
     backdrop-filter: blur(8px);
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    padding: 12px 24px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    position: sticky; top: 0; z-index: 30;
+    padding: 11px 22px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
   }
-  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 11px; }
   .logo {
     width: 34px; height: 34px; border-radius: 9px;
     background: linear-gradient(135deg, var(--site), var(--cloud));
     display: grid; place-items: center; font-weight: 800; font-family: var(--mono); font-size: 13px; color: #050811;
   }
-  .brand h1 { font-size: 15.5px; font-weight: 700; letter-spacing: -0.01em; }
-  .brand p { font-size: 12px; color: var(--muted); }
+  .brand h1 { font-size: 15px; font-weight: 700; }
+  .brand p { font-size: 11.5px; color: var(--muted); }
 
-  .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
   .tab {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--muted);
-    padding: 7px 12px;
-    border-radius: 8px;
-    font-size: 12.5px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--muted);
+    padding: 6px 11px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px;
   }
   .tab:hover { border-color: var(--border-hi); color: var(--text); }
   .tab.active {
-    background: rgba(99, 102, 241, 0.2);
-    border-color: var(--cloud);
-    color: #fff;
+    background: rgba(99, 102, 241, 0.2); border-color: var(--cloud); color: #fff;
     box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.35);
   }
   .pill {
-    font-size: 10px; font-family: var(--mono); padding: 1px 6px; border-radius: 99px;
+    font-size: 9.5px; font-family: var(--mono); padding: 1px 6px; border-radius: 99px;
     background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);
   }
   .pill.warn { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); }
 
-  main { max-width: 1380px; margin: 0 auto; padding: 18px 24px 48px; display: flex; flex-direction: column; gap: 16px; }
+  main { max-width: 1400px; margin: 0 auto; padding: 16px 22px 44px; display: flex; flex-direction: column; gap: 14px; }
 
-  /* Controls bar */
+  /* Controls & Walkthrough bar */
   .controls {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 11px 16px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
   }
-  .btn-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  button.btn {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 7px 12px;
-    border-radius: 8px;
-    font-size: 12.5px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    display: inline-flex; align-items: center; gap: 6px;
+  .btn-group { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+  button.btn, select.sel {
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 11px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 5px;
   }
-  button.btn:hover { border-color: var(--border-hi); transform: translateY(-1px); }
-  button.btn:active { transform: translateY(0); }
+  select.sel { font-family: var(--mono); font-size: 11.5px; }
+  button.btn:hover, select.sel:hover { border-color: var(--border-hi); }
+  button.btn:disabled { opacity: 0.42; cursor: not-allowed; }
   button.btn.up { border-color: rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.14); color: #10b981; }
   body:not(.light) button.btn.up { color: #a7f3d0; }
   button.btn.down { border-color: rgba(59, 130, 246, 0.5); background: rgba(59, 130, 246, 0.15); color: #2563eb; }
   body:not(.light) button.btn.down { color: #bfdbfe; }
-  button.btn.wan-cut { border-color: rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.14); color: #dc2626; }
-  body:not(.light) button.btn.wan-cut { color: #fca5a5; }
-  button.btn.wan-ok { border-color: rgba(16, 185, 129, 0.6); background: rgba(16, 185, 129, 0.18); color: #059669; }
-  body:not(.light) button.btn.wan-ok { color: #6ee7b7; }
+  button.btn.danger { border-color: rgba(239, 68, 68, 0.5); background: rgba(239, 68, 68, 0.14); color: #dc2626; }
+  body:not(.light) button.btn.danger { color: #fca5a5; }
+  button.btn.ok { border-color: rgba(16, 185, 129, 0.6); background: rgba(16, 185, 129, 0.18); color: #059669; }
+  body:not(.light) button.btn.ok { color: #6ee7b7; }
   button.btn.active-toggle { border-color: var(--wan); background: rgba(245, 158, 11, 0.2); color: #b45309; }
   body:not(.light) button.btn.active-toggle { color: #fde68a; }
 
-  .seg { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+  .bw-ctrl {
+    display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+    background: var(--bg-card); border: 1px solid var(--border); padding: 4px 10px; border-radius: 8px;
+  }
+  .bw-ctrl input[type="range"] { width: 88px; accent-color: var(--wan); cursor: pointer; }
+  .bw-ctrl b { color: var(--text); }
+
+  .seg { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); font-family: var(--mono); }
   .seg button {
     background: var(--bg-card); border: 1px solid var(--border); color: var(--muted);
-    padding: 4px 9px; border-radius: 6px; cursor: pointer; font-family: var(--mono); font-size: 11px; font-weight: 600;
+    padding: 4px 8px; border-radius: 6px; cursor: pointer; font-family: var(--mono); font-size: 11px; font-weight: 600;
   }
   .seg button.on { border-color: var(--cloud); color: #fff; background: var(--cloud); }
 
-  /* Diagram stage */
+  /* Step Walkthrough Banner */
+  .walkthrough {
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.12), rgba(16, 185, 129, 0.08));
+    border: 1px solid var(--border-hi);
+    border-radius: 10px;
+    padding: 10px 14px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .wt-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .wt-step-pill {
+    font-family: var(--mono); font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px;
+    background: var(--cloud); color: #fff;
+  }
+  .wt-text { font-size: 12.5px; font-weight: 500; }
+  .wt-text b { color: var(--up); }
+  body.light .wt-text b { color: #059669; }
+
+  /* Diagram Stage */
   .stage-wrap {
     background: var(--bg-panel);
     background-image: radial-gradient(rgba(142, 160, 196, 0.16) 1px, transparent 1px);
     background-size: 22px 22px;
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 16px;
+    padding: 14px 16px;
     position: relative;
-    overflow: hidden;
   }
-  .stage-header {
-    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
-    margin-bottom: 10px;
-  }
-  .stage-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .stage-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
-  .stage-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .metrics { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .stage-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .stage-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .stage-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stage-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .metrics { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
   .metrics b { color: var(--text); }
 
-  .wan-badge {
-    font-family: var(--mono); font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+  .status-pill {
+    font-family: var(--mono); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px;
     border: 1px solid rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.14); color: #10b981;
   }
-  body:not(.light) .wan-badge { color: #6ee7b7; }
-  .wan-badge.down {
+  body:not(.light) .status-pill { color: #6ee7b7; }
+  .status-pill.down {
     border-color: rgba(239, 68, 68, 0.65); background: rgba(239, 68, 68, 0.18); color: #ef4444;
     animation: blink 1.1s infinite;
   }
-  body:not(.light) .wan-badge.down { color: #fca5a5; }
+  body:not(.light) .status-pill.down { color: #fca5a5; }
   @keyframes blink { 50% { opacity: 0.55; } }
 
-  svg#diagram { width: 100%; height: 350px; display: block; }
+  svg#diagram { width: 100%; height: 350px; display: block; user-select: none; }
   .zone-site { fill: var(--site-bg); stroke: var(--site-bd); stroke-width: 1.5; stroke-dasharray: 6 4; rx: 12; }
   .zone-cloud { fill: var(--cloud-bg); stroke: var(--cloud-bd); stroke-width: 1.5; stroke-dasharray: 6 4; rx: 12; }
   .zone-label { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; }
 
-  .node-box { fill: #141e36; stroke: #314575; stroke-width: 1.6; rx: 10; transition: stroke 0.2s, filter 0.2s; }
+  .node-g { cursor: pointer; }
+  .node-box { fill: #141e36; stroke: #314575; stroke-width: 1.6; rx: 10; transition: stroke 0.18s, filter 0.18s, stroke-width 0.18s; }
+  .node-g:hover .node-box { stroke: #93c5fd; stroke-width: 2.2; }
+  .node-box.selected { stroke: #f59e0b !important; stroke-width: 2.6 !important; filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.45)); }
   .node-box.broker { fill: #162340; stroke: #4c6cb8; }
   .node-box.site-broker { fill: #0f2926; stroke: #1f8a66; }
   .node-box.bridge { fill: #241d3c; stroke: #7c5dfa; }
-  .node-box.pulse { stroke: #34d399 !important; filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.65)); }
-  .node-box.pulse-down { stroke: #60a5fa !important; filter: drop-shadow(0 0 10px rgba(96, 165, 250, 0.65)); }
+  .node-box.crashed { fill: #2b1218; stroke: #ef4444 !important; stroke-dasharray: 5 3; }
+  .node-box.pulse { stroke: #34d399 !important; filter: drop-shadow(0 0 11px rgba(52, 211, 153, 0.75)); }
+  .node-box.pulse-down { stroke: #60a5fa !important; filter: drop-shadow(0 0 11px rgba(96, 165, 250, 0.75)); }
 
-  .node-title { fill: #eef3ff; font-size: 12px; font-weight: 700; text-anchor: middle; }
-  .node-sub { fill: #93a5c8; font-size: 10px; font-family: var(--mono); text-anchor: middle; }
-  .edge-line { fill: none; stroke: #3b5284; stroke-width: 2; }
+  .node-title { fill: #eef3ff; font-size: 12px; font-weight: 700; text-anchor: middle; pointer-events: none; }
+  .node-sub { fill: #93a5c8; font-size: 10px; font-family: var(--mono); text-anchor: middle; pointer-events: none; }
+  .edge-line { fill: none; stroke: #3b5284; stroke-width: 2; transition: stroke 0.2s, stroke-width 0.2s; }
+  .edge-line.active-hop { stroke: #34d399; stroke-width: 3.5; }
+  .edge-line.active-hop-down { stroke: #60a5fa; stroke-width: 3.5; }
   .edge-wan { fill: none; stroke: var(--wan); stroke-width: 3; stroke-dasharray: 8 5; animation: dash 1.2s linear infinite; }
   .edge-wan.down { stroke: var(--wan-down); stroke-dasharray: 4 6; animation: none; opacity: 0.75; }
   @keyframes dash { to { stroke-dashoffset: -26; } }
 
-  .wan-pill-bg { fill: #1b160b; stroke: rgba(245, 158, 11, 0.65); stroke-width: 1.3; rx: 8; }
-  .wan-pill-bg.down { fill: #260d12; stroke: rgba(239, 68, 68, 0.75); }
-  .wan-pill-txt { fill: #fde68a; font-family: var(--mono); font-size: 9.8px; font-weight: 700; text-anchor: middle; }
+  .wan-click { cursor: pointer; }
+  .wan-pill-bg { fill: #1b160b; stroke: rgba(245, 158, 11, 0.7); stroke-width: 1.3; rx: 8; }
+  .wan-click:hover .wan-pill-bg { stroke-width: 2.2; }
+  .wan-pill-bg.down { fill: #260d12; stroke: rgba(239, 68, 68, 0.8); }
+  .wan-pill-txt { fill: #fde68a; font-family: var(--mono); font-size: 9.8px; font-weight: 700; text-anchor: middle; pointer-events: none; }
   .wan-pill-txt.down { fill: #fca5a5; }
 
   .q-badge-bg { fill: #1c2b4a; stroke: #4768a8; stroke-width: 1.2; rx: 8; }
   .q-badge-bg.has-items { fill: #3b240b; stroke: #f59e0b; }
   .q-badge-txt { fill: #cbd5e1; font-family: var(--mono); font-size: 10px; font-weight: 700; text-anchor: middle; }
   .q-badge-txt.has-items { fill: #fde68a; }
-  .seq-lbl-bg { fill: #0f1629; opacity: 0.92; rx: 4; }
+  .seq-lbl-bg { fill: #0f1629; opacity: 0.94; rx: 4; }
 
-  /* Lower 2-column grid */
-  .grid-2 { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 16px; }
-  @media (max-width: 960px) { .grid-2 { grid-template-columns: 1fr; } }
+  /* Lower 2-column workbench */
+  .grid-2 { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 14px; }
+  @media (max-width: 980px) { .grid-2 { grid-template-columns: 1fr; } }
 
   .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 13px 15px; display: flex; flex-direction: column; gap: 10px;
   }
-  .panel-head {
-    display: flex; justify-content: space-between; align-items: center; gap: 8px;
-    border-bottom: 1px solid var(--border); padding-bottom: 8px;
-  }
-  .panel-head h2 { font-size: 13.5px; font-weight: 700; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .panel-head h2 { font-size: 13px; font-weight: 700; }
   .panel-head span { font-size: 11px; color: var(--muted); font-family: var(--mono); }
 
-  .trace-list {
-    height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;
-    font-family: var(--mono); font-size: 11.5px;
+  /* Wireshark-style packet table */
+  .pkt-wrap { height: 265px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .pkt-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+  .pkt-table th {
+    position: sticky; top: 0; background: var(--bg-card); color: var(--muted);
+    padding: 6px 8px; text-align: left; font-size: 10px; border-bottom: 1px solid var(--border);
   }
-  .trace-item {
-    background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid var(--up);
-    border-radius: 6px; padding: 7px 10px; display: grid; grid-template-columns: 64px 1fr; gap: 8px;
-    animation: fadeIn 0.2s ease;
-  }
-  .trace-item.down { border-left-color: var(--down); }
-  .trace-item.buf { border-left-color: var(--warn); }
-  .trace-item.exp { border-left-color: var(--wan-down); }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .pkt-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .pkt-table tbody tr:hover td { background: rgba(99, 102, 241, 0.1); }
+  .pkt-table tbody tr.sel-pkt td { background: rgba(99, 102, 241, 0.22); }
 
-  .tag {
-    font-size: 10px; font-weight: 800; text-align: center; padding: 2px 5px; border-radius: 4px; align-self: start;
-    background: rgba(16, 185, 129, 0.16); color: #10b981;
-  }
-  body:not(.light) .tag { color: #6ee7b7; }
-  .trace-item.down .tag { background: rgba(59, 130, 246, 0.18); color: #2563eb; }
-  body:not(.light) .trace-item.down .tag { color: #93c5fd; }
-  .trace-item.buf .tag { background: rgba(245, 158, 11, 0.18); color: #b45309; }
-  body:not(.light) .trace-item.buf .tag { color: #fcd34d; }
-  .trace-item.exp .tag { background: rgba(239, 68, 68, 0.18); color: #dc2626; }
-  body:not(.light) .trace-item.exp .tag { color: #fca5a5; }
-  .trace-subj { color: #eef3ff; font-weight: 600; word-break: break-all; }
-  .trace-meta { color: var(--muted); font-size: 10.5px; margin-top: 2px; }
+  .badge-dir { font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 4px; display: inline-block; }
+  .b-up { background: rgba(16, 185, 129, 0.18); color: #10b981; }
+  body:not(.light) .b-up { color: #6ee7b7; }
+  .b-down { background: rgba(59, 130, 246, 0.18); color: #2563eb; }
+  body:not(.light) .b-down { color: #93c5fd; }
+  .b-buf { background: rgba(245, 158, 11, 0.2); color: #b45309; }
+  body:not(.light) .b-buf { color: #fcd34d; }
+  .b-exp { background: rgba(239, 68, 68, 0.2); color: #dc2626; }
+  body:not(.light) .b-exp { color: #fca5a5; }
 
-  .specs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  @media (max-width: 600px) { .specs { grid-template-columns: 1fr; } }
-  .spec { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
-  .spec .k { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--mono); }
-  .spec .v { font-size: 12.5px; font-weight: 600; margin-top: 3px; color: var(--text); }
+  /* Inspector tabs */
+  .insp-tabs { display: flex; gap: 6px; }
+  .insp-tab {
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--muted);
+    padding: 4px 9px; border-radius: 6px; font-size: 11px; font-family: var(--mono); font-weight: 700; cursor: pointer;
+  }
+  .insp-tab.on { border-color: var(--cloud); background: rgba(99, 102, 241, 0.2); color: var(--text); }
+
+  .wire-bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; font-family: var(--mono); font-size: 10px; font-weight: 700; }
+  .wire-bar div { display: grid; place-items: center; color: #050811; white-space: nowrap; padding: 0 6px; }
+  .kv-list { display: grid; grid-template-columns: 115px 1fr; gap: 5px 10px; font-size: 11.5px; font-family: var(--mono); }
+  .kv-k { color: var(--muted); }
+  .kv-v { color: var(--text); word-break: break-all; }
+  .code-box {
+    background: #0a0f1f; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px;
+    font-family: var(--mono); font-size: 11px; color: #a7f3d0; overflow-x: auto; white-space: pre;
+  }
+
+  .specs { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+  .spec { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+  .spec .k { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-family: var(--mono); }
+  .spec .v { font-size: 12px; font-weight: 600; margin-top: 2px; }
   .spec .v.good { color: #10b981; }
   body:not(.light) .spec .v.good { color: #6ee7b7; }
   .spec .v.warn { color: #d97706; }
   body:not(.light) .spec .v.warn { color: #fcd34d; }
   .spec .v.bad { color: #dc2626; }
   body:not(.light) .spec .v.bad { color: #fca5a5; }
-
   .verdict-box {
     background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.35);
-    border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: #dbe5ff;
+    border-radius: 8px; padding: 9px 11px; font-size: 12px; color: #dbe5ff;
   }
 
   .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  th { color: var(--muted); font-family: var(--mono); font-size: 11px; text-transform: uppercase; background: var(--bg-card); }
-  tr.hl td { background: rgba(99, 102, 241, 0.13); }
-  tbody tr:hover td { background: rgba(99, 102, 241, 0.07); }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.cmp th, table.cmp td { padding: 8px 11px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.cmp th { color: var(--muted); font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; background: var(--bg-card); }
+  table.cmp tr.hl td { background: rgba(99, 102, 241, 0.14); }
+  table.cmp tbody tr:hover td { background: rgba(99, 102, 241, 0.07); }
   .yes { color: #10b981; font-weight: 700; }
   body:not(.light) .yes { color: #6ee7b7; }
   .no { color: #dc2626; font-weight: 700; }
@@ -307,16 +303,16 @@
   .mid { color: #d97706; font-weight: 600; }
   body:not(.light) .mid { color: #fcd34d; }
 
-  .legend { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; font-size: 11.5px; color: var(--muted); margin-top: 8px; }
-  .legend-dots { display: flex; flex-wrap: wrap; gap: 14px; }
-  .legend-dots span { display: inline-flex; align-items: center; gap: 6px; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .legend { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; font-size: 11px; color: var(--muted); margin-top: 8px; font-family: var(--mono); }
+  .legend-dots { display: flex; flex-wrap: wrap; gap: 12px; font-family: var(--sans); }
+  .legend-dots span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
   footer {
-    max-width: 1380px; margin: 0 auto; padding: 0 24px 32px;
-    display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); font-family: var(--mono);
+    max-width: 1400px; margin: 0 auto; padding: 0 22px 28px;
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: 11.5px; color: var(--muted); font-family: var(--mono);
   }
-  footer a { color: var(--cloud); text-decoration: none; }
+  footer a { color: var(--cloud); text-decoration: none; margin-right: 12px; }
   footer a:hover { text-decoration: underline; }
 </style>
 </head>
@@ -327,46 +323,72 @@
     <div class="logo">K⇄N</div>
     <div>
       <h1>Cloud Kafka ↔ Site NATS Explorer</h1>
-      <p>Interactive animated comparison of Patterns A, B, C &amp; Custom HTTP Bridge</p>
+      <p>Click any node, click any packet, step through scenarios, or cut WAN / crash bridge live</p>
     </div>
   </div>
   <div class="header-right">
     <div class="tabs" id="tabs"></div>
-    <button class="btn" id="btnTheme" title="Toggle Light/Dark theme">☀ Light</button>
+    <button class="btn" id="btnTheme" title="Shortcut: T">☀ Light</button>
   </div>
 </header>
 
 <main>
+  <!-- Interactive Traffic & Chaos Controls -->
   <div class="controls">
     <div class="btn-group">
-      <button class="btn up" id="btnUp">▲ Send Telemetry (Up)</button>
-      <button class="btn up" id="btnBurst">▲▲ Burst 5× Events</button>
-      <button class="btn down" id="btnDown">▼ Send Command (Down)</button>
-      <button class="btn wan-cut" id="btnWan">⚡ Cut WAN Link</button>
-      <button class="btn" id="btnAuto">▶ Auto-Flow</button>
-      <button class="btn" id="btnClear">Clear Log</button>
+      <button class="btn up" id="btnUp">▲ Telemetry (Up)</button>
+      <button class="btn up" id="btnBurst">▲▲ Burst 5×</button>
+      <button class="btn down" id="btnDown">▼ Command (Down)</button>
+      <button class="btn danger" id="btnWan" title="Shortcut: W">⚡ Cut WAN</button>
+      <button class="btn danger" id="btnCrash" title="Shortcut: B">💥 Crash Bridge</button>
+      <button class="btn" id="btnAuto" title="Shortcut: Space">▶ Auto-Flow</button>
     </div>
-    <div class="seg">
-      Speed:
-      <button data-spd="0.5">0.5×</button>
-      <button data-spd="1" class="on">1×</button>
-      <button data-spd="2">2×</button>
+    <div class="btn-group">
+      <div class="bw-ctrl" title="Simulates WAN link bandwidth (2 Mbps measured = ~400 msg/s)">
+        WAN: <input type="range" id="bwSlider" min="1" max="50" value="2" />
+        <b id="bwVal">2 Mbps</b> (~<span id="bwRate">400</span> msg/s)
+      </div>
+      <div class="seg">
+        <button data-spd="0.5">0.5×</button>
+        <button data-spd="1" class="on">1×</button>
+        <button data-spd="2">2×</button>
+      </div>
     </div>
   </div>
 
+  <!-- Guided Step-by-Step Walkthrough -->
+  <div class="walkthrough">
+    <div class="wt-left">
+      <select class="sel" id="scenarioSel" aria-label="Walkthrough scenario">
+        <option value="up">Walkthrough: Uplink Telemetry (Device → Kafka)</option>
+        <option value="down">Walkthrough: Command Round-Trip (Kafka → Device → Result)</option>
+        <option value="outage">Walkthrough: WAN Outage + Ordered Catch-up</option>
+      </select>
+      <span class="wt-step-pill" id="wtStepBadge">STEP 0 / 5</span>
+      <span class="wt-text" id="wtText">Click <b>Step →</b> to walk through hop by hop, or click any node on the diagram to inspect it.</span>
+    </div>
+    <div class="btn-group">
+      <button class="btn" id="btnPrev" title="Shortcut: ←">← Prev</button>
+      <button class="btn up" id="btnNext" title="Shortcut: →">Step →</button>
+      <button class="btn" id="btnReset">Reset</button>
+    </div>
+  </div>
+
+  <!-- Interactive Topology / Sequence Canvas -->
   <div class="stage-wrap">
     <div class="stage-header">
       <div>
         <div class="stage-title">
           <span id="stageTitle">Pattern A — Cloud NATS Hub + Cloud Bridge</span>
-          <span class="wan-badge" id="wanBadge">WAN ONLINE</span>
+          <span class="status-pill" id="wanBadge">WAN ONLINE</span>
+          <span class="status-pill" id="brBadge">BRIDGE UP</span>
         </div>
         <div class="stage-sub" id="stageSub"></div>
       </div>
       <div class="stage-right">
         <div class="seg" id="viewSwitch">
-          <button data-view="network" class="on">NETWORK</button>
-          <button data-view="sequence">SEQUENCE</button>
+          <button data-view="network" class="on" title="Shortcut: V">NETWORK</button>
+          <button data-view="sequence" title="Shortcut: V">SEQUENCE</button>
         </div>
         <div class="metrics">
           Up: <b id="mUp">0</b> · Down: <b id="mDown">0</b> · Buffered: <b id="mBuf">0</b> · Expired: <b id="mExp">0</b>
@@ -378,41 +400,62 @@
 
     <div class="legend">
       <div class="legend-dots">
-        <span><i class="dot" style="background:var(--up)"></i> Uplink event (Device → Cloud Kafka)</span>
-        <span><i class="dot" style="background:var(--down)"></i> Downlink command (Cloud Kafka → Device)</span>
-        <span><i class="dot" style="background:var(--wan)"></i> WAN / VPN boundary</span>
-        <span><i class="dot" style="background:var(--wan-down)"></i> WAN cut / TTL expired</span>
+        <span><i class="dot" style="background:var(--up)"></i> Uplink (Device → Kafka)</span>
+        <span><i class="dot" style="background:var(--down)"></i> Downlink (Kafka → Device)</span>
+        <span><i class="dot" style="background:var(--wan)"></i> Click WAN pill to cut/restore</span>
+        <span><i class="dot" style="background:var(--wan-down)"></i> Outage / Crash / TTL Expired</span>
       </div>
-      <span style="font-family:var(--mono)">Tip: Cut WAN, send events + commands, then Restore WAN to watch ordered catch-up</span>
+      <span>Click any node to inspect · Click any packet row below to decode headers &amp; payload</span>
     </div>
   </div>
 
+  <!-- Lower Workbench: Packet Flow Table + Live Inspector -->
   <div class="grid-2">
     <div class="panel">
       <div class="panel-head">
-        <h2>Live Packet &amp; Hop Trace</h2>
-        <span>Subject / Topic · Key · Headers</span>
+        <h2>Packet Flow (Click any row to inspect)</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="pktCount">0 frames</span>
+          <button class="btn" id="btnClear" style="padding:3px 8px;font-size:11px">Clear</button>
+        </div>
       </div>
-      <div class="trace-list" id="traceList"></div>
+      <div class="pkt-wrap">
+        <table class="pkt-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>DIR</th>
+              <th>HOP</th>
+              <th>SUBJECT / TOPIC</th>
+              <th>INFO</th>
+            </tr>
+          </thead>
+          <tbody id="pktBody"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="panel">
       <div class="panel-head">
-        <h2>Pattern Characteristics</h2>
-        <span id="dirLabel">pattern-a-cloud-hub/</span>
+        <h2 id="inspTitle">Inspector</h2>
+        <div class="insp-tabs">
+          <button class="insp-tab on" data-insp="overview">Overview</button>
+          <button class="insp-tab" data-insp="node">Node</button>
+          <button class="insp-tab" data-insp="packet">Packet</button>
+        </div>
       </div>
-      <div class="specs" id="specGrid"></div>
-      <div class="verdict-box" id="verdictBox"></div>
+      <div id="inspBody" style="display:flex;flex-direction:column;gap:9px;"></div>
     </div>
   </div>
 
+  <!-- Side-by-Side Comparison Matrix -->
   <div class="panel">
     <div class="panel-head">
       <h2>Side-by-Side Comparison Matrix</h2>
       <span>Click any row to switch pattern</span>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="cmp">
         <thead>
           <tr>
             <th>Pattern</th>
@@ -432,31 +475,39 @@
 </main>
 
 <footer>
-  <span>Docs:</span>
-  <a href="comparison.md">comparison.md</a>
-  <a href="naming.md">naming.md</a>
-  <a href="load-test-2mbps.md">load-test-2mbps.md</a>
-  <a href="custom-http-bridge.md">custom-http-bridge.md</a>
-  <a href="production-readiness.md">production-readiness.md</a>
-  <a href="adr/0003-direct-site-to-kafka-vs-cloud-hub.md">ADR-0003</a>
+  <div>
+    Docs:
+    <a href="comparison.md">comparison.md</a>
+    <a href="naming.md">naming.md</a>
+    <a href="load-test-2mbps.md">load-test-2mbps.md</a>
+    <a href="custom-http-bridge.md">custom-http-bridge.md</a>
+    <a href="production-readiness.md">production-readiness.md</a>
+    <a href="adr/0003-direct-site-to-kafka-vs-cloud-hub.md">ADR-0003</a>
+  </div>
+  <div>Keys: [1–4] Pattern · [←/→] Step · [Space] Auto · [W] WAN · [B] Crash Bridge · [V] View · [T] Theme</div>
 </footer>
 
 <script>
-// All coordinates calibrated for viewBox="0 0 1280 350" with >= 220px clean WAN gap between SITE and CLOUD boxes.
+const NODE_DOCS = {
+  dev:    { zone: 'SITE (edge LAN)', role: 'Edge device (e.g. arm-01)', proto: 'NATS JetStream client (user: device)', detail: 'Publishes device.to.site.<device>.{telemetry,health,result} and receives site.to.device.<device>.command. Never connects to Cloud or Kafka.', action: { label: '▲ Publish Telemetry from arm-01', fn: () => sendTelemetry(1) } },
+  ctl:    { zone: 'SITE (edge LAN)', role: 'Site Controller app', proto: 'NATS Pull Consumer (user: site-controller)', detail: 'Pulls site-addressed commands (cloud.to.site.site1.command), selects the target device, sends request on site.to.device.<device>.command, and acks only after device confirms.', action: { label: '▼ Send Command to Site Controller', fn: () => sendCommand() } },
+  s_nats: { zone: 'SITE (edge LAN)', role: 'Site NATS Server (nats:2.12.5)', proto: 'JetStream file store (sync_interval: always)', detail: 'Holds site1-outbox (15 GB, discard: new). Transforms device.to.site.*.<type> → site.to.cloud.site1.<type> (strips device id from subject). Survives WAN outages and site kill -9.', action: { label: '▲▲ Burst 5× into site1-outbox', fn: () => sendTelemetry(5) } },
+  c_hub:  { zone: 'CLOUD (private VPC)', role: '3-Node Cloud NATS Hub Cluster', proto: 'Leaf mTLS :7422 · wss:// :443 · 3× replication', detail: 'Isolated per-site hub accounts (CN=site1,O=fleet). Sources site1-outbox into cloud-inbox (7d) and stores commands in cloud-outbox (workqueue, Nats-TTL). Emits $SYS.ACCOUNT.site1.DISCONNECT.', action: { label: '⚡ Toggle WAN Leaf Link', fn: () => toggleWan() } },
+  bridge: { zone: 'Bridge Component', role: 'nats-io/nats-kafka (v1.4.2) / HTTP Agent', proto: 'KafkaToJetStream + JetStreamToKafka', detail: 'Config-driven official bridge (no custom code in Patterns A/B/C). Down: cloud.to.site.site1.command (1 partition). Up: durable kafka-bridge-site1-<type> → Kafka key = site1.', action: { label: '💥 Crash / Restart Bridge', fn: () => toggleCrash() } },
+  api:    { zone: 'CLOUD (private VPC)', role: 'Custom Cloud Ingest & Command API', proto: 'HTTPS :443 behind API Gateway / WAF', detail: 'Custom service you build & own. Validates OAuth/JWT, checks {siteId} auth on every endpoint, produces to Kafka, and stores pending commands for site polling/SSE.', action: { label: '💥 Crash / Restart API', fn: () => toggleCrash() } },
+  kafka:  { zone: 'CLOUD (private VPC)', role: 'Cloud Apache Kafka (KRaft)', proto: 'Topics: cloud.to.site.<site>.command (1p), site.to.cloud.<type> (6p)', detail: 'Cloud event bus. Command topics have 1 partition per site for strict ordering. Up topics have 6 partitions keyed by <site> for per-site order + cross-site parallelism.', action: { label: '▼ Produce Command to Kafka', fn: () => sendCommand() } },
+  svc:    { zone: 'CLOUD (private VPC)', role: 'Cloud Microservices', proto: 'Standard Kafka Producers & Consumers', detail: 'Cloud services only speak Kafka — they never need NATS clients, JetStream domains, or per-site certificates. Deduplicate on Nats-Msg-Id / commandId.', action: { label: '▼ Send Command from Cloud Svc', fn: () => sendCommand() } }
+};
+
 const PATTERNS = {
   A: {
-    id: 'A',
-    tab: 'Pattern A: Cloud Hub',
-    badge: 'Recommended',
+    id: 'A', tab: 'Pattern A: Cloud Hub', badge: 'Recommended',
     title: 'Pattern A — Cloud NATS Hub + Cloud Bridge',
     sub: 'Site dials out to 3-node Cloud NATS Hub (mTLS :7422 or wss:// :443). Single nats-kafka bridge in Cloud VPC.',
-    dir: 'pattern-a-cloud-hub/',
-    wanText: 'WAN: Site dials out',
-    wanProto: 'Leaf mTLS :7422 / wss:// :443',
+    dir: 'pattern-a-cloud-hub/', wanText: 'WAN: Site dials out', wanProto: 'Leaf mTLS :7422 / wss:// :443',
     siteBox:  { x: 16,  y: 24, w: 356, h: 300, label: 'SITE: site1 (edge LAN)' },
     cloudBox: { x: 604, y: 24, w: 660, h: 300, label: 'CLOUD (private VPC)' },
-    wanEdge: ['s_nats', 'c_hub'],
-    cloudTtlExpiry: true,
+    wanEdge: ['s_nats', 'c_hub'], bridgeNode: 'bridge', cloudTtlExpiry: true,
     nodes: [
       { id: 'dev',    x: 92,   y: 112, w: 124, h: 56, title: 'Devices',         sub: 'arm-01',              cls: '' },
       { id: 'ctl',    x: 92,   y: 236, w: 124, h: 56, title: 'Site Controller', sub: 'routes to device',    cls: '' },
@@ -466,11 +517,7 @@ const PATTERNS = {
       { id: 'kafka',  x: 1028, y: 174, w: 126, h: 66, title: 'Cloud Kafka',     sub: 'private VPC',         cls: 'broker' },
       { id: 'svc',    x: 1184, y: 174, w: 120, h: 56, title: 'Cloud Services',  sub: 'Kafka apps',          cls: '' }
     ],
-    edges: [
-      ['dev', 's_nats'], ['ctl', 's_nats'],
-      ['s_nats', 'c_hub', true],
-      ['c_hub', 'bridge'], ['bridge', 'kafka'], ['kafka', 'svc']
-    ],
+    edges: [['dev', 's_nats'], ['ctl', 's_nats'], ['s_nats', 'c_hub', true], ['c_hub', 'bridge'], ['bridge', 'kafka'], ['kafka', 'svc']],
     upPath: ['dev', 's_nats', 'c_hub', 'bridge', 'kafka', 'svc'],
     downPath: ['svc', 'kafka', 'bridge', 'c_hub', 's_nats', 'ctl', 'dev'],
     specs: [
@@ -484,20 +531,14 @@ const PATTERNS = {
     verdict: 'Best default for 50–500+ sites. Zero custom code, minimal site footprint, Kafka stays private, and stale commands expire in cloud-outbox before ever crossing the WAN.',
     cmp: ['Pattern A: Cloud Hub', 'Cloud (1 shared)', 'Yes (3 nodes)', 'Site → Cloud', '<span class="yes">Yes (wss://)</span>', '<span class="yes">Yes</span>', '<span class="yes">None</span>', '<span class="yes">Nats-TTL in cloud</span>']
   },
-
   B: {
-    id: 'B',
-    tab: 'Pattern B: Site Bridge',
-    badge: '',
+    id: 'B', tab: 'Pattern B: Site Bridge', badge: '',
     title: 'Pattern B — Site Bridge → Cloud Kafka (no Cloud NATS Hub)',
     sub: 'Each site runs NATS + local nats-kafka bridge dialing directly into Cloud Kafka over WAN.',
-    dir: 'pattern-b-direct-kafka/',
-    wanText: 'WAN: Site dials out',
-    wanProto: 'Kafka TLS + SASL/mTLS :9093',
+    dir: 'pattern-b-direct-kafka/', wanText: 'WAN: Site dials out', wanProto: 'Kafka TLS + SASL/mTLS :9093',
     siteBox:  { x: 16,  y: 24, w: 544, h: 300, label: 'SITE: site1 (edge LAN)' },
     cloudBox: { x: 800, y: 24, w: 464, h: 300, label: 'CLOUD (VPC, no NATS hub)' },
-    wanEdge: ['bridge', 'kafka'],
-    cloudTtlExpiry: false,
+    wanEdge: ['bridge', 'kafka'], bridgeNode: 'bridge', cloudTtlExpiry: false,
     nodes: [
       { id: 'dev',    x: 92,   y: 112, w: 124, h: 56, title: 'Devices',         sub: 'arm-01',              cls: '' },
       { id: 'ctl',    x: 92,   y: 236, w: 124, h: 56, title: 'Site Controller', sub: 'pulls site1-inbox',   cls: '' },
@@ -506,11 +547,7 @@ const PATTERNS = {
       { id: 'kafka',  x: 912,  y: 174, w: 152, h: 70, title: 'Cloud Kafka',     sub: 'WAN reachable :9093', cls: 'broker',      queue: 'outbox_cmd' },
       { id: 'svc',    x: 1144, y: 174, w: 144, h: 58, title: 'Cloud Services',  sub: 'Kafka apps',          cls: '' }
     ],
-    edges: [
-      ['dev', 's_nats'], ['ctl', 's_nats'], ['s_nats', 'bridge'],
-      ['bridge', 'kafka', true],
-      ['kafka', 'svc']
-    ],
+    edges: [['dev', 's_nats'], ['ctl', 's_nats'], ['s_nats', 'bridge'], ['bridge', 'kafka', true], ['kafka', 'svc']],
     upPath: ['dev', 's_nats', 'bridge', 'kafka', 'svc'],
     downPath: ['svc', 'kafka', 'bridge', 's_nats', 'ctl', 'dev'],
     specs: [
@@ -521,23 +558,17 @@ const PATTERNS = {
       ['Offline & Command TTL', 'Controller checks payload expiresAt', 'warn'],
       ['Cloud NATS Cluster', 'None (Kafka only in cloud)', 'good']
     ],
-    verdict: 'Good when you have a small number of sites on private WAN/VPN and want to avoid running a Cloud NATS cluster. Tradeoff: Kafka brokers are exposed to sites and every site runs a bridge.',
+    verdict: 'Good for a small number of sites on private WAN/VPN when you want to avoid a Cloud NATS cluster. Tradeoff: Kafka brokers are exposed to sites and every site runs a bridge.',
     cmp: ['Pattern B: Site Bridge', 'Site (1/site)', 'No', 'Site → Cloud', '<span class="mid">NAT only (no wss)</span>', '<span class="no">No (WAN)</span>', '<span class="yes">None</span>', '<span class="mid">App expiresAt</span>']
   },
-
   C: {
-    id: 'C',
-    tab: 'Pattern C: Cloud Bridge',
-    badge: '',
+    id: 'C', tab: 'Pattern C: Cloud Bridge', badge: '',
     title: 'Pattern C — Cloud Bridge → Site NATS (no Cloud NATS Hub)',
     sub: 'Per-site nats-kafka bridges run in Cloud VPC next to Kafka and dial into each site NATS :4222 over private VPN.',
-    dir: 'pattern-c-cloud-bridge-direct/',
-    wanText: 'WAN / VPN: Cloud dials site',
-    wanProto: 'NATS client TLS :4222',
+    dir: 'pattern-c-cloud-bridge-direct/', wanText: 'WAN / VPN: Cloud dials site', wanProto: 'NATS client TLS :4222',
     siteBox:  { x: 16,  y: 24, w: 364, h: 300, label: 'SITE: site1 (edge LAN)' },
     cloudBox: { x: 620, y: 24, w: 644, h: 300, label: 'CLOUD (private VPC, no NATS hub)' },
-    wanEdge: ['s_nats', 'bridge'],
-    cloudTtlExpiry: false,
+    wanEdge: ['s_nats', 'bridge'], bridgeNode: 'bridge', cloudTtlExpiry: false,
     nodes: [
       { id: 'dev',    x: 92,   y: 112, w: 124, h: 56, title: 'Devices',         sub: 'arm-01',              cls: '' },
       { id: 'ctl',    x: 92,   y: 236, w: 124, h: 56, title: 'Site Controller', sub: 'pulls site1-inbox',   cls: '' },
@@ -546,11 +577,7 @@ const PATTERNS = {
       { id: 'kafka',  x: 946,  y: 174, w: 148, h: 70, title: 'Cloud Kafka',     sub: 'private VPC',         cls: 'broker',      queue: 'outbox_cmd' },
       { id: 'svc',    x: 1156, y: 174, w: 144, h: 58, title: 'Cloud Services',  sub: 'Kafka apps',          cls: '' }
     ],
-    edges: [
-      ['dev', 's_nats'], ['ctl', 's_nats'],
-      ['s_nats', 'bridge', true],
-      ['bridge', 'kafka'], ['kafka', 'svc']
-    ],
+    edges: [['dev', 's_nats'], ['ctl', 's_nats'], ['s_nats', 'bridge', true], ['bridge', 'kafka'], ['kafka', 'svc']],
     upPath: ['dev', 's_nats', 'bridge', 'kafka', 'svc'],
     downPath: ['svc', 'kafka', 'bridge', 's_nats', 'ctl', 'dev'],
     specs: [
@@ -564,20 +591,14 @@ const PATTERNS = {
     verdict: 'Strong middle ground if you already have a private site-to-cloud VPN (WireGuard/Tailscale/IPsec). Sites stay minimal, Kafka stays private, and there is no Cloud NATS cluster.',
     cmp: ['Pattern C: Cloud Bridge', 'Cloud (1/site)', 'No', 'Cloud → Site', '<span class="no">No (needs VPN)</span>', '<span class="yes">Yes</span>', '<span class="yes">None</span>', '<span class="mid">App expiresAt</span>']
   },
-
   HTTP: {
-    id: 'HTTP',
-    tab: 'Custom HTTP Bridge',
-    badge: 'Reference',
+    id: 'HTTP', tab: 'Custom HTTP Bridge', badge: 'Reference',
     title: 'Reference — Custom HTTP Bridge (Site Agent + Cloud API)',
     sub: 'Custom site HTTP agent POSTs batches & polls/SSEs a custom Cloud API behind API Gateway / WAF.',
-    dir: 'docs/custom-http-bridge.md',
-    wanText: 'WAN: Site dials out',
-    wanProto: 'HTTPS POST + Poll / SSE :443',
+    dir: 'docs/custom-http-bridge.md', wanText: 'WAN: Site dials out', wanProto: 'HTTPS POST + Poll / SSE :443',
     siteBox:  { x: 16,  y: 24, w: 506, h: 300, label: 'SITE: site1 (edge LAN)' },
     cloudBox: { x: 754, y: 24, w: 510, h: 300, label: 'CLOUD (private VPC, no NATS hub)' },
-    wanEdge: ['bridge', 'api'],
-    cloudTtlExpiry: true,
+    wanEdge: ['bridge', 'api'], bridgeNode: 'api', cloudTtlExpiry: true,
     nodes: [
       { id: 'dev',    x: 86,   y: 112, w: 114, h: 56, title: 'Devices',         sub: 'arm-01',              cls: '' },
       { id: 'ctl',    x: 86,   y: 236, w: 114, h: 56, title: 'Site Controller', sub: 'routes to device',    cls: '' },
@@ -587,11 +608,7 @@ const PATTERNS = {
       { id: 'kafka',  x: 1026, y: 174, w: 126, h: 66, title: 'Cloud Kafka',     sub: 'private VPC',         cls: 'broker' },
       { id: 'svc',    x: 1184, y: 174, w: 118, h: 56, title: 'Cloud Services',  sub: 'Kafka apps',          cls: '' }
     ],
-    edges: [
-      ['dev', 's_nats'], ['ctl', 's_nats'], ['s_nats', 'bridge'],
-      ['bridge', 'api', true],
-      ['api', 'kafka'], ['kafka', 'svc']
-    ],
+    edges: [['dev', 's_nats'], ['ctl', 's_nats'], ['s_nats', 'bridge'], ['bridge', 'api', true], ['api', 'kafka'], ['kafka', 'svc']],
     upPath: ['dev', 's_nats', 'bridge', 'api', 'kafka', 'svc'],
     downPath: ['svc', 'kafka', 'api', 'bridge', 's_nats', 'ctl', 'dev'],
     specs: [
@@ -609,18 +626,25 @@ const PATTERNS = {
 
 let current = 'A';
 let viewMode = 'network';
+let inspMode = 'overview';
+let selectedNode = null;
+let selectedPktId = null;
 let wanUp = true;
+let bridgeUp = true;
 let speed = 1;
+let bwMbps = 2;
 let autoTimer = null;
 let runEpoch = 0;
-let seqUp = 0, seqDown = 0;
+let seqUp = 0, seqDown = 0, pktSeq = 0;
 let counters = { up: 0, down: 0, exp: 0 };
 let upQueue = [];
 let downQueue = [];
+let packets = [];
 let seqCoords = {};
+let wtStep = 0;
 
 const svg = document.getElementById('diagram');
-const traceList = document.getElementById('traceList');
+const pktBody = document.getElementById('pktBody');
 
 function el(tag, attrs = {}, text = '') {
   const n = document.createElementNS('http://www.w3.org/2000/svg', tag);
@@ -628,8 +652,102 @@ function el(tag, attrs = {}, text = '') {
   if (text) n.textContent = text;
   return n;
 }
-
 function getNode(p, id) { return p.nodes.find(n => n.id === id); }
+
+function getWalkthroughSteps() {
+  const p = PATTERNS[current];
+  const sc = document.getElementById('scenarioSel').value;
+  if (sc === 'up') {
+    const steps = [];
+    for (let i = 0; i < p.upPath.length - 1; i++) {
+      const a = p.upPath[i], b = p.upPath[i + 1];
+      steps.push({
+        from: a, to: b, dir: 'up',
+        label: `Hop ${i + 1}: ${getNode(p, a).title} → ${getNode(p, b).title}`,
+        desc: i === 0
+          ? 'Device publishes device.to.site.arm-01.telemetry; site1-outbox fsyncs to disk & rewrites subject to site.to.cloud.site1.telemetry.'
+          : b === 'kafka'
+            ? 'Bridge produces to Kafka topic site.to.cloud.telemetry with key = site1 (keeps per-site order on 1 partition).'
+            : b === 'svc'
+              ? 'Cloud service consumes ordered telemetry for site1 from Kafka.'
+              : 'Message crosses WAN / internal hop with JetStream flow control & explicit acks.'
+      });
+    }
+    return steps;
+  }
+  if (sc === 'down') {
+    const steps = [];
+    for (let i = 0; i < p.downPath.length - 1; i++) {
+      const a = p.downPath[i], b = p.downPath[i + 1];
+      steps.push({
+        from: a, to: b, dir: 'down',
+        label: `Hop ${i + 1}: ${getNode(p, a).title} → ${getNode(p, b).title}`,
+        desc: i === 0
+          ? 'Cloud service produces command to Kafka cloud.to.site.site1.command (1 partition for strict ordering, Nats-Msg-Id + Nats-TTL).'
+          : b === 'ctl'
+            ? 'Site controller pulls its durable consumer (site1-controller) and chooses target device arm-01.'
+            : b === 'dev'
+              ? 'Device receives site.to.device.arm-01.command, replies ok, and site controller acks (deletes from workqueue).'
+              : 'Command traverses bridge / WAN into the site queue.'
+      });
+    }
+    return steps;
+  }
+  // outage scenario
+  return [
+    { action: 'cut',     label: '1. Cut WAN Link', desc: 'WAN link drops. Site devices keep publishing and receiving local disk acks from site1-outbox.' },
+    { action: 'tel',     label: '2. Publish 3× Telemetry during outage', desc: '3 events fsync to site1-outbox disk buffer (0 loss while WAN is down).' },
+    { action: 'cmd',     label: '3. Send Command during outage', desc: p.cloudTtlExpiry ? 'Command waits in cloud-outbox with Nats-TTL (expires if site stays offline).' : 'Command waits in Cloud Kafka (site controller must check expiresAt on reconnect).' },
+    { action: 'restore', label: '4. Restore WAN Link', desc: 'WAN reconnects — buffered uplink events replay in exact sequence order, followed by queued commands.' }
+  ];
+}
+
+function updateWalkthroughUI() {
+  const steps = getWalkthroughSteps();
+  document.getElementById('wtStepBadge').textContent = `STEP ${wtStep} / ${steps.length}`;
+  document.getElementById('btnPrev').disabled = wtStep <= 0;
+  document.getElementById('btnNext').disabled = wtStep >= steps.length;
+  if (wtStep === 0) {
+    document.getElementById('wtText').innerHTML = 'Click <b>Step →</b> to walk through hop by hop, or click any node on the diagram.';
+  } else {
+    const s = steps[wtStep - 1];
+    document.getElementById('wtText').innerHTML = `<b>${s.label}:</b> ${s.desc}`;
+  }
+}
+
+async function runWalkthroughStep(idx) {
+  const steps = getWalkthroughSteps();
+  if (idx < 1 || idx > steps.length) return;
+  wtStep = idx;
+  updateWalkthroughUI();
+  const s = steps[idx - 1];
+
+  // Clear previous active-hop styling
+  document.querySelectorAll('.edge-line').forEach(e => e.classList.remove('active-hop', 'active-hop-down'));
+
+  if (s.action === 'cut') { if (wanUp) toggleWan(); return; }
+  if (s.action === 'tel') { sendTelemetry(3); return; }
+  if (s.action === 'cmd') { sendCommand(); return; }
+  if (s.action === 'restore') { if (!wanUp) toggleWan(); return; }
+
+  const edgeEl = document.getElementById(`edge-${s.from}-${s.to}`) || document.getElementById(`edge-${s.to}-${s.from}`);
+  if (edgeEl) edgeEl.classList.add(s.dir === 'down' ? 'active-hop-down' : 'active-hop');
+
+  const p = PATTERNS[current];
+  const color = s.dir === 'down' ? '#3b82f6' : '#10b981';
+  pulseNode(s.from, s.dir);
+  await animateHop(s.from, s.to, color, s.dir === 'down' ? 'cmd' : 'tel', 620, s.dir, runEpoch);
+  pulseNode(s.to, s.dir);
+
+  const pkt = recordPacket(
+    s.dir, s.dir === 'down' ? 'DOWN' : 'UP',
+    `${getNode(p, s.from).title} → ${getNode(p, s.to).title}`,
+    s.dir === 'down' ? 'cloud.to.site.site1.command' : (s.to === 'kafka' || s.to === 'svc' ? 'site.to.cloud.telemetry' : 'site.to.cloud.site1.telemetry'),
+    s.desc,
+    { protocol: s.to === 'kafka' || s.from === 'kafka' ? 'Kafka (KRaft)' : 'NATS JetStream', key: 'site1', headers: s.dir === 'down' ? { 'Nats-Msg-Id': 'cmd-step', 'Nats-TTL': '15m' } : { 'Nats-Msg-Id': 'arm-01-tel-step', 'key': 'site1' }, payload: s.dir === 'down' ? { commandId: 'cmd-step', action: 'start' } : { device: 'arm-01', seq: idx, tempC: 42.1 } }
+  );
+  selectPacket(pkt.id);
+}
 
 function renderTabs() {
   const wrap = document.getElementById('tabs');
@@ -656,12 +774,65 @@ function renderComparison() {
   }
 }
 
+function renderInspector() {
+  document.querySelectorAll('.insp-tab').forEach(b => b.classList.toggle('on', b.dataset.insp === inspMode));
+  const body = document.getElementById('inspBody');
+  const p = PATTERNS[current];
+
+  if (inspMode === 'overview') {
+    document.getElementById('inspTitle').textContent = `Overview — ${p.dir}`;
+    body.innerHTML = `
+      <div class="specs">${p.specs.map(([k, v, cls]) => `<div class="spec"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`).join('')}</div>
+      <div class="verdict-box">${p.verdict}</div>`;
+    return;
+  }
+
+  if (inspMode === 'node') {
+    const nId = selectedNode || p.nodes[2].id;
+    const n = getNode(p, nId) || p.nodes[0];
+    const doc = NODE_DOCS[n.id] || { zone: 'Component', role: n.title, proto: n.sub, detail: '' };
+    document.getElementById('inspTitle').textContent = `Node Inspector — ${n.title}`;
+    body.innerHTML = `
+      <div class="kv-list">
+        <div class="kv-k">Component</div><div class="kv-v"><b>${n.title}</b> (${n.sub})</div>
+        <div class="kv-k">Boundary</div><div class="kv-v">${doc.zone}</div>
+        <div class="kv-k">Role</div><div class="kv-v">${doc.role}</div>
+        <div class="kv-k">Protocol</div><div class="kv-v">${doc.proto}</div>
+      </div>
+      <div class="verdict-box">${doc.detail}</div>
+      ${doc.action ? `<div><button class="btn up" id="nodeActionBtn">${doc.action.label}</button></div>` : ''}`;
+    if (doc.action) document.getElementById('nodeActionBtn').onclick = doc.action.fn;
+    return;
+  }
+
+  // packet inspector
+  const pkt = packets.find(x => x.id === selectedPktId) || packets[0];
+  document.getElementById('inspTitle').textContent = pkt ? `Packet #${pkt.id} Inspector` : 'Packet Inspector';
+  if (!pkt) {
+    body.innerHTML = `<div class="verdict-box">Send Telemetry or a Command, then click any row in the Packet Flow table to decode its wire framing, headers, and JSON payload.</div>`;
+    return;
+  }
+  const hdrs = Object.entries(pkt.meta.headers || {}).map(([k, v]) => `${k}: ${v}`).join('  ·  ') || 'none';
+  body.innerHTML = `
+    <div class="wire-bar" title="Proportional wire frame breakdown (512 B payload)">
+      <div style="width:14%;background:#38bdf8">TLS 29B</div>
+      <div style="width:18%;background:#a78bfa">${pkt.meta.protocol.startsWith('Kafka') ? 'Kafka' : 'NATS'} Hdr</div>
+      <div style="width:68%;background:#34d399">Payload (${JSON.stringify(pkt.meta.payload).length} B JSON)</div>
+    </div>
+    <div class="kv-list">
+      <div class="kv-k">Hop</div><div class="kv-v">${pkt.hop}</div>
+      <div class="kv-k">Subject/Topic</div><div class="kv-v"><b>${pkt.subject}</b></div>
+      <div class="kv-k">Protocol</div><div class="kv-v">${pkt.meta.protocol}</div>
+      <div class="kv-k">Headers</div><div class="kv-v">${hdrs}</div>
+    </div>
+    <div class="code-box">${JSON.stringify(pkt.meta.payload, null, 2)}</div>`;
+}
+
 function renderDiagram() {
   const p = PATTERNS[current];
   svg.innerHTML = '';
   if (viewMode === 'sequence') { renderSequenceDiagram(p); return; }
 
-  // Zones
   const sb = p.siteBox, cb = p.cloudBox;
   svg.appendChild(el('rect', { x: sb.x, y: sb.y, width: sb.w, height: sb.h, class: 'zone-site' }));
   svg.appendChild(el('text', { x: sb.x + 14, y: sb.y + 20, class: 'zone-label', fill: '#10b981' }, sb.label));
@@ -669,61 +840,52 @@ function renderDiagram() {
   svg.appendChild(el('rect', { x: cb.x, y: cb.y, width: cb.w, height: cb.h, class: 'zone-cloud' }));
   svg.appendChild(el('text', { x: cb.x + 14, y: cb.y + 20, class: 'zone-label', fill: '#6366f1' }, cb.label));
 
-  // Edges
   const edgeLayer = el('g', { id: 'edges' });
   svg.appendChild(edgeLayer);
   for (const [aId, bId, isWan] of p.edges) {
     const a = getNode(p, aId), b = getNode(p, bId);
     edgeLayer.appendChild(el('line', {
-      x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+      x1: a.x, y1: a.y, x2: b.x, y2: b.y, id: `edge-${aId}-${bId}`,
       class: isWan ? ('edge-wan' + (wanUp ? '' : ' down')) : 'edge-line'
     }));
 
     if (isWan) {
-      // Center pill squarely in the gap between siteBox right edge and cloudBox left edge
       const gapMidX = (sb.x + sb.w + cb.x) / 2;
-      const pillW = 204, pillH = 42, pillY = 104;
-      edgeLayer.appendChild(el('rect', {
-        x: gapMidX - pillW / 2, y: pillY, width: pillW, height: pillH,
-        class: 'wan-pill-bg' + (wanUp ? '' : ' down')
-      }));
-      edgeLayer.appendChild(el('text', {
-        x: gapMidX, y: pillY + 17, class: 'wan-pill-txt' + (wanUp ? '' : ' down')
-      }, wanUp ? p.wanText : '✕ WAN LINK DOWN'));
-      edgeLayer.appendChild(el('text', {
-        x: gapMidX, y: pillY + 32, class: 'wan-pill-txt' + (wanUp ? '' : ' down'), style: 'font-weight:500;opacity:0.92'
-      }, wanUp ? p.wanProto : 'Buffering on site & cloud'));
+      const pillW = 204, pillH = 44, pillY = 102;
+      const wg = el('g', { class: 'wan-click' });
+      wg.onclick = () => toggleWan();
+      wg.appendChild(el('rect', { x: gapMidX - pillW / 2, y: pillY, width: pillW, height: pillH, class: 'wan-pill-bg' + (wanUp ? '' : ' down') }));
+      wg.appendChild(el('text', { x: gapMidX, y: pillY + 17, class: 'wan-pill-txt' + (wanUp ? '' : ' down') }, wanUp ? p.wanText : '✕ WAN LINK DOWN'));
+      wg.appendChild(el('text', { x: gapMidX, y: pillY + 33, class: 'wan-pill-txt' + (wanUp ? '' : ' down'), style: 'font-weight:500;opacity:0.92' }, wanUp ? `${p.wanProto} · ${bwMbps} Mbps` : 'Click to restore WAN'));
+      edgeLayer.appendChild(wg);
     }
   }
 
-  // Nodes
   const nodeLayer = el('g', { id: 'nodes' });
   svg.appendChild(nodeLayer);
   for (const n of p.nodes) {
-    const g = el('g', { id: 'node-' + n.id });
-    g.appendChild(el('rect', {
-      x: n.x - n.w / 2, y: n.y - n.h / 2, width: n.w, height: n.h,
-      class: 'node-box ' + (n.cls || ''), id: 'box-' + n.id
-    }));
-    g.appendChild(el('text', { x: n.x, y: n.y - 4, class: 'node-title' }, n.title));
-    g.appendChild(el('text', { x: n.x, y: n.y + 13, class: 'node-sub' }, n.sub));
+    const g = el('g', { id: 'node-' + n.id, class: 'node-g' });
+    g.onclick = () => {
+      selectedNode = n.id;
+      inspMode = 'node';
+      renderDiagram();
+      renderInspector();
+    };
+    const isCrashed = !bridgeUp && n.id === p.bridgeNode;
+    const cls = ['node-box', n.cls || '', selectedNode === n.id ? 'selected' : '', isCrashed ? 'crashed' : ''].filter(Boolean).join(' ');
+    g.appendChild(el('rect', { x: n.x - n.w / 2, y: n.y - n.h / 2, width: n.w, height: n.h, class: cls, id: 'box-' + n.id }));
+    g.appendChild(el('text', { x: n.x, y: n.y - 4, class: 'node-title' }, isCrashed ? `${n.title} (DOWN)` : n.title));
+    g.appendChild(el('text', { x: n.x, y: n.y + 13, class: 'node-sub' }, isCrashed ? 'kill -9 · click Crash to restart' : n.sub));
 
     if (n.queue) {
       const count = n.queue === 'outbox' ? upQueue.length : downQueue.length;
       const has = count > 0;
       const bw = 114, bh = 21;
-      g.appendChild(el('rect', {
-        x: n.x - bw / 2, y: n.y + n.h / 2 + 10, width: bw, height: bh,
-        class: 'q-badge-bg' + (has ? ' has-items' : ''), id: 'qbg-' + n.queue
-      }));
-      g.appendChild(el('text', {
-        x: n.x, y: n.y + n.h / 2 + 24,
-        class: 'q-badge-txt' + (has ? ' has-items' : ''), id: 'qtxt-' + n.queue
-      }, n.queue === 'outbox' ? `disk buffer: ${count}` : `cmd queue: ${count}`));
+      g.appendChild(el('rect', { x: n.x - bw / 2, y: n.y + n.h / 2 + 10, width: bw, height: bh, class: 'q-badge-bg' + (has ? ' has-items' : ''), id: 'qbg-' + n.queue }));
+      g.appendChild(el('text', { x: n.x, y: n.y + n.h / 2 + 24, class: 'q-badge-txt' + (has ? ' has-items' : ''), id: 'qtxt-' + n.queue }, n.queue === 'outbox' ? `disk buffer: ${count}` : `cmd queue: ${count}`));
     }
     nodeLayer.appendChild(g);
   }
-
   svg.appendChild(el('g', { id: 'particles' }));
 }
 
@@ -737,19 +899,24 @@ function renderSequenceDiagram(p) {
     const cx = startX + i * colW;
     seqCoords[n.id] = cx;
     svg.appendChild(el('line', { x1: cx, y1: 66, x2: cx, y2: 334, stroke: '#3b5284', 'stroke-width': 1.4, 'stroke-dasharray': '5 4' }));
-    svg.appendChild(el('rect', { x: cx - 68, y: 16, width: 136, height: 46, class: 'node-box ' + (n.cls || ''), id: 'box-' + n.id }));
-    svg.appendChild(el('text', { x: cx, y: 36, class: 'node-title' }, n.title));
-    svg.appendChild(el('text', { x: cx, y: 51, class: 'node-sub' }, n.sub));
+    const g = el('g', { class: 'node-g' });
+    g.onclick = () => { selectedNode = n.id; inspMode = 'node'; renderDiagram(); renderInspector(); };
+    g.appendChild(el('rect', { x: cx - 68, y: 16, width: 136, height: 46, class: 'node-box ' + (n.cls || '') + (selectedNode === n.id ? ' selected' : ''), id: 'box-' + n.id }));
+    g.appendChild(el('text', { x: cx, y: 36, class: 'node-title' }, n.title));
+    g.appendChild(el('text', { x: cx, y: 51, class: 'node-sub' }, n.sub));
+    svg.appendChild(g);
   });
   seqCoords['ctl'] = seqCoords['dev'];
 
-  // WAN divider
   const [wa, wb] = p.wanEdge;
   if (seqCoords[wa] && seqCoords[wb]) {
     const wx = (seqCoords[wa] + seqCoords[wb]) / 2;
     svg.appendChild(el('line', { x1: wx, y1: 12, x2: wx, y2: 340, class: 'edge-wan' + (wanUp ? '' : ' down') }));
-    svg.appendChild(el('rect', { x: wx - 86, y: 74, width: 172, height: 22, class: 'wan-pill-bg' + (wanUp ? '' : ' down') }));
-    svg.appendChild(el('text', { x: wx, y: 89, class: 'wan-pill-txt' + (wanUp ? '' : ' down') }, wanUp ? p.wanText : '✕ WAN DOWN'));
+    const wg = el('g', { class: 'wan-click' });
+    wg.onclick = () => toggleWan();
+    wg.appendChild(el('rect', { x: wx - 86, y: 74, width: 172, height: 22, class: 'wan-pill-bg' + (wanUp ? '' : ' down') }));
+    wg.appendChild(el('text', { x: wx, y: 89, class: 'wan-pill-txt' + (wanUp ? '' : ' down') }, wanUp ? `${p.wanText} (${bwMbps} Mbps)` : '✕ WAN DOWN'));
+    svg.appendChild(wg);
   }
 
   const rows = [
@@ -760,35 +927,27 @@ function renderSequenceDiagram(p) {
     { y: 284, from: p.downPath[1], to: p.upPath[1], color: '#3b82f6', lbl: '5. bridge → ' + (p.id === 'A' ? 'cloud-outbox (Nats-TTL) → leaf' : 'site1-inbox') },
     { y: 322, from: p.upPath[1], to: p.upPath[0], color: '#3b82f6', lbl: '6. site.to.device.arm-01.command → reply ok → ack' }
   ];
-
   rows.forEach(r => {
     const x1 = seqCoords[r.from], x2 = seqCoords[r.to];
     if (!x1 || !x2) return;
     svg.appendChild(el('line', { x1, y1: r.y, x2, y2: r.y, stroke: r.color, 'stroke-width': 2.2 }));
     const dir = x2 > x1 ? 1 : -1;
     svg.appendChild(el('polygon', { points: `${x2},${r.y} ${x2 - dir * 8},${r.y - 4.5} ${x2 - dir * 8},${r.y + 4.5}`, fill: r.color }));
-    const mx = (x1 + x2) / 2;
-    const tw = r.lbl.length * 6.3 + 12;
+    const mx = (x1 + x2) / 2, tw = r.lbl.length * 6.3 + 12;
     svg.appendChild(el('rect', { x: mx - tw / 2, y: r.y - 19, width: tw, height: 15, class: 'seq-lbl-bg' }));
-    svg.appendChild(el('text', {
-      x: mx, y: r.y - 8, fill: r.color, 'font-size': 10.5,
-      'font-family': 'ui-monospace, monospace', 'font-weight': 700, 'text-anchor': 'middle'
-    }, r.lbl));
+    svg.appendChild(el('text', { x: mx, y: r.y - 8, fill: r.color, 'font-size': 10.5, 'font-family': 'ui-monospace, monospace', 'font-weight': 700, 'text-anchor': 'middle' }, r.lbl));
   });
-
   svg.appendChild(el('g', { id: 'particles' }));
 }
 
 function updateQueuesUI() {
-  const oBg = document.getElementById('qbg-outbox');
-  const oTxt = document.getElementById('qtxt-outbox');
+  const oBg = document.getElementById('qbg-outbox'), oTxt = document.getElementById('qtxt-outbox');
   if (oBg && oTxt) {
     oBg.setAttribute('class', 'q-badge-bg' + (upQueue.length ? ' has-items' : ''));
     oTxt.setAttribute('class', 'q-badge-txt' + (upQueue.length ? ' has-items' : ''));
     oTxt.textContent = `disk buffer: ${upQueue.length}`;
   }
-  const cBg = document.getElementById('qbg-outbox_cmd');
-  const cTxt = document.getElementById('qtxt-outbox_cmd');
+  const cBg = document.getElementById('qbg-outbox_cmd'), cTxt = document.getElementById('qtxt-outbox_cmd');
   if (cBg && cTxt) {
     cBg.setAttribute('class', 'q-badge-bg' + (downQueue.length ? ' has-items' : ''));
     cTxt.setAttribute('class', 'q-badge-txt' + (downQueue.length ? ' has-items' : ''));
@@ -808,18 +967,40 @@ function pulseNode(id, dir) {
   setTimeout(() => box.classList.remove(cls), 360 / speed);
 }
 
-function addTrace(kind, tag, title, meta) {
-  const div = document.createElement('div');
-  div.className = 'trace-item ' + kind;
-  div.innerHTML = `<span class="tag">${tag}</span><div><div class="trace-subj">${title}</div><div class="trace-meta">${meta}</div></div>`;
-  traceList.prepend(div);
-  while (traceList.children.length > 40) traceList.removeChild(traceList.lastChild);
+function recordPacket(kind, tag, hop, subject, info, meta) {
+  const pkt = { id: ++pktSeq, kind, tag, hop, subject, info, meta };
+  packets.unshift(pkt);
+  if (packets.length > 60) packets.pop();
+  renderPacketTable();
+  return pkt;
+}
+
+function selectPacket(id) {
+  selectedPktId = id;
+  inspMode = 'packet';
+  renderPacketTable();
+  renderInspector();
+}
+
+function renderPacketTable() {
+  document.getElementById('pktCount').textContent = `${packets.length} frames`;
+  pktBody.innerHTML = packets.map(p => {
+    const bCls = p.kind === 'down' ? 'b-down' : p.kind === 'buf' ? 'b-buf' : p.kind === 'exp' ? 'b-exp' : 'b-up';
+    return `<tr class="${p.id === selectedPktId ? 'sel-pkt' : ''}" data-pid="${p.id}">
+      <td>${p.id}</td>
+      <td><span class="badge-dir ${bCls}">${p.tag}</span></td>
+      <td>${p.hop}</td>
+      <td><b>${p.subject}</b></td>
+      <td style="color:var(--muted)">${p.info}</td>
+    </tr>`;
+  }).join('');
+  pktBody.querySelectorAll('tr').forEach(tr => {
+    tr.onclick = () => selectPacket(parseInt(tr.dataset.pid, 10));
+  });
 }
 
 function hopPoint(p, id, dir) {
-  if (viewMode === 'sequence') {
-    return { x: seqCoords[id] || 100, y: dir === 'down' ? 284 : 164 };
-  }
+  if (viewMode === 'sequence') return { x: seqCoords[id] || 100, y: dir === 'down' ? 284 : 164 };
   const n = getNode(p, id);
   return n ? { x: n.x, y: n.y } : null;
 }
@@ -846,11 +1027,8 @@ function animateHop(aId, bId, color, label, durationMs, dir, epoch) {
       if (epoch !== runEpoch) { g.remove(); return resolve(); }
       const t = Math.min(1, (now - start) / dur);
       const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      const x = a.x + (b.x - a.x) * ease;
-      const y = a.y + (b.y - a.y) * ease;
-      g.setAttribute('transform', `translate(${x.toFixed(1)}, ${y.toFixed(1)})`);
-      if (t < 1) requestAnimationFrame(step);
-      else { g.remove(); resolve(); }
+      g.setAttribute('transform', `translate(${(a.x + (b.x - a.x) * ease).toFixed(1)}, ${(a.y + (b.y - a.y) * ease).toFixed(1)})`);
+      if (t < 1) requestAnimationFrame(step); else { g.remove(); resolve(); }
     }
     requestAnimationFrame(step);
   });
@@ -861,17 +1039,18 @@ async function runPath(path, dir, label, onDone, onBlocked) {
   const p = PATTERNS[current];
   const color = dir === 'down' ? '#3b82f6' : '#10b981';
   const [wa, wb] = p.wanEdge;
+  const wanDur = Math.max(260, Math.round(900 / Math.sqrt(bwMbps)));
   pulseNode(path[0], dir);
 
   for (let i = 0; i < path.length - 1; i++) {
     if (epoch !== runEpoch) return false;
     const a = path[i], b = path[i + 1];
     const crossesWan = (a === wa && b === wb) || (a === wb && b === wa);
-    if (crossesWan && !wanUp) {
-      if (onBlocked) onBlocked(a, path.slice(i));
+    if ((crossesWan && !wanUp) || (!bridgeUp && b === p.bridgeNode)) {
+      if (onBlocked) onBlocked(!wanUp ? 'WAN down' : 'Bridge down', path.slice(i));
       return false;
     }
-    await animateHop(a, b, color, label, crossesWan ? 660 : 390, dir, epoch);
+    await animateHop(a, b, color, label, crossesWan ? wanDur : 360, dir, epoch);
     if (epoch !== runEpoch) return false;
     pulseNode(b, dir);
   }
@@ -886,21 +1065,22 @@ function sendTelemetry(count = 1) {
       if (epoch !== runEpoch) return;
       const id = ++seqUp;
       const p = PATTERNS[current];
-      addTrace('up', 'UP', `device.to.site.arm-01.telemetry  (#${id})`,
-        `device → site1-outbox (fsynced, transformed to site.to.cloud.site1.telemetry)`);
+      const payload = { device: 'arm-01', seq: id, tempC: +(38 + (id % 9) * 0.7).toFixed(1) };
+      recordPacket('up', 'UP', 'arm-01 → site1-outbox', 'device.to.site.arm-01.telemetry', 'fsynced to site disk',
+        { protocol: 'NATS JetStream', headers: { 'Nats-Msg-Id': `arm-01-tel-${id}` }, payload });
 
       runPath(p.upPath, 'up', `tel#${id}`, () => {
         counters.up++;
         updateQueuesUI();
-        addTrace('up', 'KAFKA', `site.to.cloud.telemetry  [key: site1]  (#${id})`,
-          `delivered in order to Cloud Kafka partition (Nats-Msg-Id: arm-01-tel-${id})`);
-      }, (_node, remPath) => {
-        upQueue.push({ id, remPath });
+        recordPacket('up', 'KAFKA', 'bridge → Cloud Kafka', 'site.to.cloud.telemetry', `key: site1 · partition 2 · #${id}`,
+          { protocol: 'Kafka (KRaft)', headers: { key: 'site1', 'Nats-Msg-Id': `arm-01-tel-${id}` }, payload });
+      }, (why, remPath) => {
+        upQueue.push({ id, remPath, payload });
         updateQueuesUI();
-        addTrace('buf', 'DISK', `Buffered #${id} in site1-outbox (WAN down)`,
-          `Device already received local disk ack; waiting for WAN reconnect`);
+        recordPacket('buf', 'BUFFER', 'site1-outbox (disk)', 'site.to.cloud.site1.telemetry', `queued (${why}) · 0 loss`,
+          { protocol: 'NATS JetStream (File)', headers: { reason: why, 'Nats-Msg-Id': `arm-01-tel-${id}` }, payload });
       });
-    }, k * (240 / speed));
+    }, k * (230 / speed));
   }
 }
 
@@ -909,58 +1089,73 @@ function sendCommand() {
   const id = ++seqDown;
   const p = PATTERNS[current];
   const cmdId = `cmd-${id}`;
-  addTrace('down', 'DOWN', `cloud.to.site.site1.command  [${cmdId}]`,
-    `Cloud Service → Kafka (1 partition, key: site1, Nats-TTL: 10s)`);
+  const payload = { commandId: cmdId, action: 'calibrate', expiresAt: new Date(Date.now() + 10000).toISOString() };
+  recordPacket('down', 'DOWN', 'Cloud Svc → Kafka', 'cloud.to.site.site1.command', `1 partition · Nats-TTL 10s`,
+    { protocol: 'Kafka (KRaft)', headers: { key: 'site1', 'Nats-Msg-Id': cmdId, 'Nats-TTL': '10s' }, payload });
 
   runPath(p.downPath, 'down', cmdId, () => {
     counters.down++;
     updateQueuesUI();
-    addTrace('down', 'ACK', `site.to.device.arm-01.command  [${cmdId}]`,
-      `Site controller routed to arm-01 → device replied ok → acked`);
-  }, (_node, remPath) => {
-    const item = { id, cmdId, remPath };
+    recordPacket('down', 'ACK', 'Controller → arm-01', 'site.to.device.arm-01.command', `${cmdId} confirmed & acked`,
+      { protocol: 'NATS Request/Reply', headers: { 'Command-Id': cmdId }, payload });
+  }, (why, remPath) => {
+    const item = { id, cmdId, remPath, payload };
     downQueue.push(item);
     updateQueuesUI();
-    if (p.cloudTtlExpiry) {
-      addTrace('buf', 'QUEUE', `${cmdId} waiting in ${p.id === 'A' ? 'cloud-outbox' : 'Cloud API'} (TTL 10s)`,
-        `WAN is down — will expire in cloud if site1 stays offline > 10s`);
+    if (p.cloudTtlExpiry && why === 'WAN down') {
+      recordPacket('buf', 'QUEUE', p.id === 'A' ? 'cloud-outbox' : 'Cloud API', 'cloud.to.site.site1.command', `${cmdId} waiting (TTL 10s)`,
+        { protocol: 'JetStream WorkQueue', headers: { 'Nats-TTL': '10s', reason: why }, payload });
       item.timer = setTimeout(() => {
         if (epoch !== runEpoch) return;
         const idx = downQueue.indexOf(item);
-        if (idx !== -1 && !wanUp) {
+        if (idx !== -1 && (!wanUp || !bridgeUp)) {
           downQueue.splice(idx, 1);
           counters.exp++;
           updateQueuesUI();
-          addTrace('exp', 'TTL EXP', `${cmdId} deleted in cloud before WAN transfer`,
-            `Stale command never shipped to site1`);
+          recordPacket('exp', 'TTL EXP', 'cloud-outbox', 'cloud.to.site.site1.command', `${cmdId} deleted in cloud (never shipped)`,
+            { protocol: 'JetStream TTL', headers: { status: 'expired', 'Nats-Msg-Id': cmdId }, payload });
         }
       }, 10000 / speed);
     } else {
-      addTrace('buf', 'KAFKA', `${cmdId} waiting in Cloud Kafka (WAN down)`,
-        `No cloud Nats-TTL — site controller must check payload expiresAt on reconnect`);
+      recordPacket('buf', 'KAFKA', 'Cloud Kafka', 'cloud.to.site.site1.command', `${cmdId} waiting (${why})`,
+        { protocol: 'Kafka (KRaft)', headers: { reason: why, key: 'site1' }, payload });
     }
   });
 }
 
 function toggleWan() {
   wanUp = !wanUp;
-  const btn = document.getElementById('btnWan');
-  const badge = document.getElementById('wanBadge');
-  btn.textContent = wanUp ? '⚡ Cut WAN Link' : '✓ Restore WAN Link';
-  btn.className = 'btn ' + (wanUp ? 'wan-cut' : 'wan-ok');
+  const btn = document.getElementById('btnWan'), badge = document.getElementById('wanBadge');
+  btn.textContent = wanUp ? '⚡ Cut WAN' : '✓ Restore WAN';
+  btn.className = 'btn ' + (wanUp ? 'danger' : 'ok');
   badge.textContent = wanUp ? 'WAN ONLINE' : 'WAN DOWN';
-  badge.className = 'wan-badge' + (wanUp ? '' : ' down');
+  badge.className = 'status-pill' + (wanUp ? '' : ' down');
   renderDiagram();
-
   if (!wanUp) {
-    addTrace('exp', 'OUTAGE', 'WAN link disconnected',
-      PATTERNS[current].id === 'A'
-        ? 'Hub emits $SYS.ACCOUNT.site1.DISCONNECT · site1 keeps acking devices locally'
-        : 'Bridge disconnected from WAN · site1 keeps acking devices locally');
+    recordPacket('exp', 'OUTAGE', 'WAN Boundary', PATTERNS[current].id === 'A' ? '$SYS.ACCOUNT.site1.DISCONNECT' : 'WAN disconnected', 'site1 keeps acking devices locally',
+      { protocol: 'System Event', headers: { site: 'site1' }, payload: { event: 'DISCONNECT', site: 'site1' } });
   } else {
-    addTrace('up', 'RESTORE', 'WAN link restored — draining buffered queues in order',
-      `Replaying ${upQueue.length} uplink event(s) and ${downQueue.length} queued command(s)`);
-    drainBuffers();
+    recordPacket('up', 'RESTORE', 'WAN Boundary', 'WAN Restored', `draining ${upQueue.length} up + ${downQueue.length} down`,
+      { protocol: 'System Event', headers: { site: 'site1' }, payload: { event: 'CONNECT', queuedUp: upQueue.length, queuedDown: downQueue.length } });
+    if (bridgeUp) drainBuffers();
+  }
+}
+
+function toggleCrash() {
+  bridgeUp = !bridgeUp;
+  const btn = document.getElementById('btnCrash'), badge = document.getElementById('brBadge');
+  btn.textContent = bridgeUp ? '💥 Crash Bridge' : '↻ Restart Bridge';
+  btn.className = 'btn ' + (bridgeUp ? 'danger' : 'ok');
+  badge.textContent = bridgeUp ? 'BRIDGE UP' : 'BRIDGE DOWN';
+  badge.className = 'status-pill' + (bridgeUp ? '' : ' down');
+  renderDiagram();
+  if (!bridgeUp) {
+    recordPacket('exp', 'CRASH', PATTERNS[current].bridgeNode, 'kill -9 kafka-bridge', 'events wait in JetStream, commands in Kafka',
+      { protocol: 'Chaos Test', headers: { signal: 'SIGKILL' }, payload: { container: 'kafka-bridge', status: 'killed' } });
+  } else {
+    recordPacket('up', 'RESTART', PATTERNS[current].bridgeNode, 'kafka-bridge restarted', `resuming ${upQueue.length} up + ${downQueue.length} down`,
+      { protocol: 'Chaos Test', headers: { status: 'healthy' }, payload: { container: 'kafka-bridge', status: 'running' } });
+    if (wanUp) drainBuffers();
   }
 }
 
@@ -972,24 +1167,23 @@ async function drainBuffers() {
 
   for (const item of upCopy) {
     if (epoch !== runEpoch) return;
-    if (!wanUp) { upQueue.unshift(item); updateQueuesUI(); break; }
+    if (!wanUp || !bridgeUp) { upQueue.unshift(item); updateQueuesUI(); break; }
     await runPath(item.remPath, 'up', `tel#${item.id}`, () => {
       counters.up++;
       updateQueuesUI();
-      addTrace('up', 'CATCHUP', `site.to.cloud.telemetry  [key: site1]  (#${item.id})`,
-        `Replayed in exact sequence order after WAN outage`);
+      recordPacket('up', 'CATCHUP', 'bridge → Cloud Kafka', 'site.to.cloud.telemetry', `replayed #${item.id} in exact order`,
+        { protocol: 'Kafka (KRaft)', headers: { key: 'site1', 'Nats-Msg-Id': `arm-01-tel-${item.id}` }, payload: item.payload });
     });
   }
-
   for (const item of downCopy) {
     if (item.timer) clearTimeout(item.timer);
     if (epoch !== runEpoch) return;
-    if (!wanUp) { downQueue.unshift(item); updateQueuesUI(); break; }
+    if (!wanUp || !bridgeUp) { downQueue.unshift(item); updateQueuesUI(); break; }
     await runPath(item.remPath, 'down', item.cmdId, () => {
       counters.down++;
       updateQueuesUI();
-      addTrace('down', 'DELIVER', `site.to.device.arm-01.command  [${item.cmdId}]`,
-        `Queued command delivered to device after WAN restored`);
+      recordPacket('down', 'DELIVER', 'Controller → arm-01', 'site.to.device.arm-01.command', `${item.cmdId} delivered after recovery`,
+        { protocol: 'NATS Request/Reply', headers: { 'Command-Id': item.cmdId }, payload: item.payload });
     });
   }
 }
@@ -997,6 +1191,8 @@ async function drainBuffers() {
 function selectPattern(id) {
   runEpoch++;
   current = id;
+  wtStep = 0;
+  selectedNode = null;
   upQueue = [];
   downQueue.forEach(i => i.timer && clearTimeout(i.timer));
   downQueue = [];
@@ -1004,41 +1200,51 @@ function selectPattern(id) {
 
   document.getElementById('stageTitle').textContent = p.title;
   document.getElementById('stageSub').textContent = p.sub;
-  document.getElementById('dirLabel').textContent = p.dir;
-
-  document.getElementById('specGrid').innerHTML = p.specs.map(([k, v, cls]) =>
-    `<div class="spec"><div class="k">${k}</div><div class="v ${cls}">${v}</div></div>`
-  ).join('');
-  document.getElementById('verdictBox').textContent = p.verdict;
-
   renderTabs();
   renderComparison();
   renderDiagram();
   updateQueuesUI();
-  addTrace('up', 'SWITCH', `Switched to ${p.title}`, p.sub);
+  updateWalkthroughUI();
+  renderInspector();
 }
 
-// Controls
+// Event wiring
 document.getElementById('btnUp').onclick = () => sendTelemetry(1);
 document.getElementById('btnBurst').onclick = () => sendTelemetry(5);
 document.getElementById('btnDown').onclick = () => sendCommand();
 document.getElementById('btnWan').onclick = () => toggleWan();
-document.getElementById('btnClear').onclick = () => { traceList.innerHTML = ''; };
+document.getElementById('btnCrash').onclick = () => toggleCrash();
+document.getElementById('btnClear').onclick = () => { packets = []; selectedPktId = null; renderPacketTable(); if (inspMode === 'packet') renderInspector(); };
+
 document.getElementById('btnAuto').onclick = (e) => {
   if (autoTimer) {
     clearInterval(autoTimer); autoTimer = null;
-    e.target.textContent = '▶ Auto-Flow';
-    e.target.classList.remove('active-toggle');
+    e.target.textContent = '▶ Auto-Flow'; e.target.classList.remove('active-toggle');
   } else {
-    e.target.textContent = '⏸ Stop Auto';
-    e.target.classList.add('active-toggle');
+    e.target.textContent = '⏸ Stop Auto'; e.target.classList.add('active-toggle');
     let tick = 0;
-    autoTimer = setInterval(() => {
-      tick++;
-      if (tick % 3 === 0) sendCommand(); else sendTelemetry(1);
-    }, 1500);
+    autoTimer = setInterval(() => { tick++; if (tick % 3 === 0) sendCommand(); else sendTelemetry(1); }, 1500);
   }
 };
+
+document.getElementById('bwSlider').oninput = (e) => {
+  bwMbps = parseInt(e.target.value, 10);
+  document.getElementById('bwVal').textContent = `${bwMbps} Mbps`;
+  document.getElementById('bwRate').textContent = Math.round(bwMbps * 200).toLocaleString();
+  renderDiagram();
+};
+
+document.getElementById('scenarioSel').onchange = () => { wtStep = 0; updateWalkthroughUI(); renderDiagram(); };
+document.getElementById('btnNext').onclick = () => runWalkthroughStep(wtStep + 1);
+document.getElementById('btnPrev').onclick = () => runWalkthroughStep(Math.max(1, wtStep - 1));
+document.getElementById('btnReset').onclick = () => {
+  wtStep = 0;
+  if (!wanUp) toggleWan();
+  if (!bridgeUp) toggleCrash();
+  updateWalkthroughUI();
+  renderDiagram();
+};
+
 document.querySelectorAll('.seg button[data-spd]').forEach(b => {
   b.onclick = () => {
     speed = parseFloat(b.dataset.spd);
@@ -1052,10 +1258,33 @@ document.querySelectorAll('#viewSwitch button').forEach(b => {
     renderDiagram();
   };
 });
+document.querySelectorAll('.insp-tab').forEach(b => {
+  b.onclick = () => { inspMode = b.dataset.insp; renderInspector(); };
+});
 document.getElementById('btnTheme').onclick = (e) => {
   const isLight = document.body.classList.toggle('light');
   e.target.textContent = isLight ? '☾ Dark' : '☀ Light';
 };
+
+// Keyboard shortcuts (Protocol Explorer style)
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  if (e.key === '1') selectPattern('A');
+  else if (e.key === '2') selectPattern('B');
+  else if (e.key === '3') selectPattern('C');
+  else if (e.key === '4') selectPattern('HTTP');
+  else if (e.key === 'ArrowRight') document.getElementById('btnNext').click();
+  else if (e.key === 'ArrowLeft') document.getElementById('btnPrev').click();
+  else if (e.key === ' ') { e.preventDefault(); document.getElementById('btnAuto').click(); }
+  else if (e.key.toLowerCase() === 'w') toggleWan();
+  else if (e.key.toLowerCase() === 'b') toggleCrash();
+  else if (e.key.toLowerCase() === 'v') {
+    viewMode = viewMode === 'network' ? 'sequence' : 'network';
+    document.querySelectorAll('#viewSwitch button').forEach(x => x.classList.toggle('on', x.dataset.view === viewMode));
+    renderDiagram();
+  }
+  else if (e.key.toLowerCase() === 't') document.getElementById('btnTheme').click();
+});
 
 // Init
 selectPattern('A');
